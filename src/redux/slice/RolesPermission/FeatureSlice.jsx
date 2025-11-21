@@ -4,13 +4,18 @@ import { apiInstance } from "../../../config/axiosInstance";
 
 export const fetchAllFeature = createAsyncThunk(
   "role/fetchAllFeature",
-  async (_, thunkAPI) => {
+  async ({ page = 1, limit = 10, search = "" } = {}, thunkAPI) => {
     const token = localStorage.getItem("token");
     if (!token) {
       return thunkAPI.rejectWithValue("No token found, please login first.");
     }
     try {
-      const response = await fetch(`${baseUrl}/api/admin/getfeatures`, {
+      const url = new URL(`${baseUrl}/api/admin/getfeatures`);
+      url.searchParams.append("page", page);
+      url.searchParams.append("limit", limit);
+      if (search) url.searchParams.append("search", search);
+
+      const response = await fetch(url.toString(), {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -75,6 +80,7 @@ const featureSlice = createSlice({
     Features: [],
     loading: false,
     error: null,
+    pagination: { page: 1, limit: 10, totalPages: 1, totalRecords: 0 },
   },
   reducers: {},
   extraReducers: (builder) => {
@@ -85,7 +91,14 @@ const featureSlice = createSlice({
       })
       .addCase(fetchAllFeature.fulfilled, (state, action) => {
         console.log("Features fetched successfully:", action.payload);
-        state.Features = action.payload.features;
+        state.Features = action.payload.features || action.payload.Features || [];
+        const p = action.payload.pagination || action.payload.Pagination || {};
+        state.pagination = {
+          page: p.page || state.pagination.page,
+          limit: p.limit || state.pagination.limit,
+          totalPages: p.totalPages || 1,
+          totalRecords: p.totalRecords || 0,
+        };
         state.loading = false;
       })
       .addCase(fetchAllFeature.rejected, (state, action) => {

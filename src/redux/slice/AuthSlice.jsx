@@ -16,6 +16,19 @@ export const sendOtp = createAsyncThunk(
       });
       const data = await response.json();
       console.log("OTP API Response:", data);
+
+        // Treat non-OK HTTP responses or explicit API-level failures as errors.
+        // Note: many successful responses include a `message` string, so
+        // only consider it an error when `success` is false, `status` === 'error',
+        // or there's an `error` field present.
+        const apiFailure =
+          data?.success === false || data?.status === "error" || Boolean(data?.error);
+
+        if (!response.ok || apiFailure) {
+          const msg = (data && (data.message || data.error)) || `Failed to send OTP (status ${response.status})`;
+          return thunkAPI.rejectWithValue(msg);
+        }
+
       return { data, countryCode, phoneNumber };
     } catch (error) {
       return thunkAPI.rejectWithValue(error.message);

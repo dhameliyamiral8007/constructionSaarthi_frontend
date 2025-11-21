@@ -4,11 +4,15 @@ import { apiInstance } from "../../../config/axiosInstance";
 
 export const fetchAllRoles = createAsyncThunk(
   "role/fetchAllRoles",
-  async (_, thunkAPI) => {
+  async ({ page = 1, limit = 10 } = {}, thunkAPI) => {
     try {
       const token = localStorage.getItem("token");
 
-      const response = await fetch(`${baseUrl}/api/admin/getAllRole`, {
+      const url = new URL(`${baseUrl}/api/admin/getAllRole`);
+      url.searchParams.append("page", page);
+      url.searchParams.append("limit", limit);
+
+      const response = await fetch(url.toString(), {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -76,6 +80,12 @@ const rolesSlice = createSlice({
     Roles: [],
     loading: false,
     error: null,
+    pagination: {
+      page: 1,
+      limit: 10,
+      totalPages: 1,
+      totalRecords: 0,
+    },
   },
   reducers: {},
   extraReducers: (builder) => {
@@ -84,7 +94,15 @@ const rolesSlice = createSlice({
         state.loading = true;
       })
       .addCase(fetchAllRoles.fulfilled, (state, action) => {
-        state.Roles = action.payload.Roles;
+        // API returns { status, message, roles, pagination }
+        state.Roles = action.payload.Roles || action.payload.roles || [];
+        const p = action.payload.pagination || action.payload.Pagination || {};
+        state.pagination = {
+          page: p.page || 1,
+          limit: p.limit || state.pagination.limit,
+          totalPages: p.totalPages || 1,
+          totalRecords: p.totalRecords || 0,
+        };
         state.loading = false;
       })
       .addCase(fetchAllRoles.rejected, (state, action) => {

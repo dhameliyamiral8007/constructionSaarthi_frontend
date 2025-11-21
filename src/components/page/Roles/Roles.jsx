@@ -7,10 +7,11 @@ import {
   fetchAllRoles,
   updateRole,
 } from "../../../redux/slice/RolesPermission/RolesSlice";
+import DataTable from "../../common/DataTable";
 
 const Roles = () => {
   const dispatch = useDispatch();
-  const { Roles, loading, error } = useSelector((state) => state.role);
+  const { Roles, loading, error, pagination } = useSelector((state) => state.role);
 
   const [openMenuId, setOpenMenuId] = useState(null);
   const [showRoleModal, setShowRoleModal] = useState(false);
@@ -23,9 +24,12 @@ const Roles = () => {
     is_active: true,
   });
 
+  const [page, setPage] = useState(pagination?.page || 1);
+  const [limit, setLimit] = useState(pagination?.limit || 10);
+
   useEffect(() => {
-    dispatch(fetchAllRoles());
-  }, [dispatch]);
+    dispatch(fetchAllRoles({ page, limit }));
+  }, [dispatch, page, limit]);
 
   const openAddModal = () => {
     setSelectedRole(null);
@@ -103,96 +107,57 @@ const Roles = () => {
         </button>
       </div>
 
-      <div className="bg-white shadow-sm border border-gray-200 mt-4 rounded-lg">
-        <table className="w-full text-left border-t border-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="py-3 px-4 border border-gray-300"></th>
-              <th className="py-3 px-4 border border-gray-300">Name</th>
-              <th className="py-3 px-4 border border-gray-300">Date</th>
-              <th className="py-3 px-4 border border-gray-300 text-center">
-                Action
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr>
-                <td colSpan="4" className="py-4 px-4 text-center text-gray-700">
-                  Loading...
-                </td>
-              </tr>
-            ) : Roles && Roles.length > 0 ? (
-              Roles.map((role) => (
-                <tr key={role.id}>
-                  <td className="py-3 px-4 border border-gray-300">
-                    <input
-                      type="checkbox"
-                      className="form-checkbox text-[#B02E0C] rounded focus:ring-[#B02E0C]"
-                    />
-                  </td>
+      <DataTable
+        columns={[
+          { header: "", accessor: "checkbox", key: "checkbox", cell: () => <input type="checkbox" className="form-checkbox text-[#B02E0C] rounded focus:ring-[#B02E0C]" /> },
+          { header: "Name", accessor: "name" },
+          { header: "Date", accessor: "createdAt", cell: (r) => new Date(r.createdAt).toLocaleDateString() },
+        ]}
+        data={Roles}
+        loading={loading}
+        pagination={pagination}
+        onPageChange={(p) => setPage(p)}
+        onLimitChange={(l) => { setLimit(l); setPage(1); }}
+        renderActions={(role) => (
+          <div>
+            <button
+              onClick={() => setOpenMenuId(openMenuId === role.id ? null : role.id)}
+              className="p-2 rounded hover:bg-gray-100"
+            >
+              <EllipsisVertical />
+            </button>
 
-                  <td className="py-3 px-4 border border-gray-300">
-                    {role.name}
-                  </td>
-
-                  <td className="py-3 px-4 border border-gray-300">
-                    {new Date(role.createdAt).toLocaleDateString()}
-                  </td>
-
-                  <td className="py-3 px-4 border border-gray-300 text-center relative">
-                    <button
-                      onClick={() =>
-                        setOpenMenuId(openMenuId === role.id ? null : role.id)
-                      }
-                      className="p-2 rounded hover:bg-gray-100"
-                    >
-                      <EllipsisVertical />
-                    </button>
-
-                    {openMenuId === role.id && (
-                      <div className="absolute right-2 top-14 bg-white border-2 border-gray-300 shadow-lg rounded-md w-40 z-50">
-                        <ul className="text-sm">
-                          <li
-                            onClick={() => {
-                              setSelectedRole(role);
-                              setShowOpenModal(true);
-                            }}
-                            className="px-4 py-2 hover:bg-gray-300 cursor-pointer flex gap-2"
-                          >
-                            <Eye size={16} /> Open
-                          </li>
-                          <li
-                            onClick={() => openEditModal(role)}
-                            className="px-4 py-2 hover:bg-gray-300 cursor-pointer flex gap-2"
-                          >
-                            <Lock size={16} /> Edit
-                          </li>
-                          <li
-                            onClick={() => {
-                              setSelectedRole(role);
-                              setShowDeleteModal(true);
-                            }}
-                            className="px-4 py-2 hover:bg-gray-300 cursor-pointer flex gap-2 text-red-600"
-                          >
-                            <Ban size={16} /> Delete
-                          </li>
-                        </ul>
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan="4" className="py-4 px-4 text-center text-gray-500">
-                  No roles available
-                </td>
-              </tr>
+            {openMenuId === role.id && (
+              <div className="absolute right-2 top-14 bg-white border-2 border-gray-300 shadow-lg rounded-md w-40 z-50">
+                <ul className="text-sm">
+                  <li
+                    onClick={() => {
+                      setSelectedRole(role);
+                      setShowOpenModal(true);
+                      setOpenMenuId(null);
+                    }}
+                    className="px-4 py-2 hover:bg-gray-300 cursor-pointer flex gap-2"
+                  >
+                    <Eye size={16} /> Open
+                  </li>
+                  <li
+                    onClick={() => { openEditModal(role); setOpenMenuId(null); }}
+                    className="px-4 py-2 hover:bg-gray-300 cursor-pointer flex gap-2"
+                  >
+                    <Lock size={16} /> Edit
+                  </li>
+                  <li
+                    onClick={() => { setSelectedRole(role); setShowDeleteModal(true); setOpenMenuId(null); }}
+                    className="px-4 py-2 hover:bg-gray-300 cursor-pointer flex gap-2 text-red-600"
+                  >
+                    <Ban size={16} /> Delete
+                  </li>
+                </ul>
+              </div>
             )}
-          </tbody>
-        </table>
-      </div>
+          </div>
+        )}
+      />
 
       {showRoleModal && (
         <Modal
@@ -265,6 +230,7 @@ const Roles = () => {
               onClick={() => {
                 dispatch(deleteRole(selectedRole.id)).then(() => {
                   setShowDeleteModal(false);
+                  dispatch(fetchAllRoles({ page, limit }));
                 });
               }}
               className="px-4 py-2 bg-red-600 text-white rounded-md"

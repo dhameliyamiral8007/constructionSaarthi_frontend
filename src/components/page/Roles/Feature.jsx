@@ -7,10 +7,11 @@ import {
   fetchAllFeature,
   updateFeature,
 } from "../../../redux/slice/RolesPermission/FeatureSlice";
+import DataTable from "../../common/DataTable";
 
 const Feature = () => {
   const dispatch = useDispatch();
-  const { Features, loading, error } = useSelector((state) => state.feature);
+  const { Features, loading, error, pagination } = useSelector((state) => state.feature);
 
   const [openMenuId, setOpenMenuId] = useState(null);
   const [showFeatureModal, setShowFeatureModal] = useState(false);
@@ -23,9 +24,13 @@ const Feature = () => {
     is_active: true,
   });
 
+  const [page, setPage] = useState(pagination?.page || 1);
+  const [limit, setLimit] = useState(pagination?.limit || 10);
+  const [search, setSearch] = useState("");
+
   useEffect(() => {
-    dispatch(fetchAllFeature());
-  }, [dispatch]);
+    dispatch(fetchAllFeature({ page, limit, search }));
+  }, [dispatch, page, limit, search]);
 
   const openAddModal = () => {
     setSelectedFeature(null);
@@ -60,14 +65,14 @@ const Feature = () => {
         .unwrap()
         .then(() => {
           setShowFeatureModal(false);
-          dispatch(fetchAllFeature());
+             dispatch(fetchAllFeature({ page, limit, search }));
         });
     } else {
       dispatch(addFeature(payload))
         .unwrap()
         .then(() => {
           setShowFeatureModal(false);
-          dispatch(fetchAllFeature());
+             dispatch(fetchAllFeature({ page, limit, search }));
         });
     }
   };
@@ -105,101 +110,55 @@ const Feature = () => {
         </button>
       </div>
 
-      <div className="bg-white shadow-sm border border-gray-200 mt-4 rounded-lg">
-        <table className="w-full text-left border-t border-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="py-3 px-4 border border-gray-300"></th>
-              <th className="py-3 px-4 border border-gray-300">Name</th>
-              <th className="py-3 px-4 border border-gray-300 text-sm font-semibold">
-                Description
-              </th>
-              <th className="py-3 px-4 border border-gray-300">Date</th>
-              <th className="py-3 px-4 border border-gray-300 text-center">
-                Action
-              </th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {loading ? (
-              <tr>
-                <td colSpan="5" className="py-4 px-4 text-center text-gray-700">
-                  Loading...
-                </td>
-              </tr>
-            ) : Features && Features.length > 0 ? (
-              Features.map((feature) => (
-                <tr key={feature.id}>
-                  <td className="py-3 px-4 border border-gray-300">
-                    <input
-                      type="checkbox"
-                      className="form-checkbox text-[#B02E0C] rounded focus:ring-[#B02E0C]"
-                    />
-                  </td>
-                  <td className="py-2 px-4 border border-gray-300 text-gray-700">
-                    {feature.name}
-                  </td>
-                  <td className="py-2 px-4 border border-gray-300 text-gray-700">
-                    {feature.description}
-                  </td>
-                  <td className="py-2 px-4 border border-gray-300 text-gray-700">
-                    {new Date(feature.createdAt).toLocaleDateString()}
-                  </td>
-                  <td className="py-3 px-4 border border-gray-300 text-center relative">
-                    <button
-                      onClick={() =>
-                        setOpenMenuId(
-                          openMenuId === feature.id ? null : feature.id
-                        )
-                      }
-                      className="p-2 rounded hover:bg-gray-100"
-                    >
-                      <EllipsisVertical />
-                    </button>
-                    {openMenuId === feature.id && (
-                      <div className="absolute right-2 top-14 bg-white border-2 border-gray-300 shadow-lg rounded-md w-40 z-50">
-                        <ul className="text-sm">
-                          <li
-                            onClick={() => {
-                              setSelectedFeature(feature);
-                              setShowOpenModal(true);
-                            }}
-                            className="px-4 py-2 hover:bg-gray-300 cursor-pointer flex gap-2"
-                          >
-                            <Eye size={16} /> Open
-                          </li>
-                          <li
-                            onClick={() => openEditModal(feature)}
-                            className="px-4 py-2 hover:bg-gray-300 cursor-pointer flex gap-2"
-                          >
-                            <Lock size={16} /> Edit
-                          </li>
-                          <li
-                            onClick={() => {
-                              setSelectedFeature(feature);
-                              setShowDeleteModal(true);
-                            }}
-                            className="px-4 py-2 hover:bg-gray-300 cursor-pointer flex gap-2 text-red-600"
-                          >
-                            <Ban size={16} /> Delete
-                          </li>
-                        </ul>
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan="5" className="py-4 px-4 text-center text-gray-500">
-                  No features available
-                </td>
-              </tr>
+      <DataTable
+        showSearch={true}
+        onSearch={(q) => { setSearch(q); setPage(1); }}
+        columns={[
+          { header: "", accessor: "checkbox", key: "checkbox", cell: () => <input type="checkbox" className="form-checkbox text-[#B02E0C] rounded focus:ring-[#B02E0C]" /> },
+          { header: "Name", accessor: "name" },
+          { header: "Description", accessor: "description" },
+          { header: "Date", accessor: "createdAt", cell: (r) => new Date(r.createdAt).toLocaleDateString() },
+        ]}
+        data={Features}
+        loading={loading}
+        pagination={pagination}
+        onPageChange={(p) => setPage(p)}
+        onLimitChange={(l) => { setLimit(l); setPage(1); }}
+        renderActions={(feature) => (
+          <div>
+            <button
+              onClick={() => setOpenMenuId(openMenuId === feature.id ? null : feature.id)}
+              className="p-2 rounded hover:bg-gray-100"
+            >
+              <EllipsisVertical />
+            </button>
+            {openMenuId === feature.id && (
+              <div className="absolute right-2 top-14 bg-white border-2 border-gray-300 shadow-lg rounded-md w-40 z-50">
+                <ul className="text-sm">
+                  <li
+                    onClick={() => { setSelectedFeature(feature); setShowOpenModal(true); setOpenMenuId(null); }}
+                    className="px-4 py-2 hover:bg-gray-300 cursor-pointer flex gap-2"
+                  >
+                    <Eye size={16} /> Open
+                  </li>
+                  <li
+                    onClick={() => { openEditModal(feature); setOpenMenuId(null); }}
+                    className="px-4 py-2 hover:bg-gray-300 cursor-pointer flex gap-2"
+                  >
+                    <Lock size={16} /> Edit
+                  </li>
+                  <li
+                    onClick={() => { setSelectedFeature(feature); setShowDeleteModal(true); setOpenMenuId(null); }}
+                    className="px-4 py-2 hover:bg-gray-300 cursor-pointer flex gap-2 text-red-600"
+                  >
+                    <Ban size={16} /> Delete
+                  </li>
+                </ul>
+              </div>
             )}
-          </tbody>
-        </table>
-      </div>
+          </div>
+        )}
+      />
 
       {showFeatureModal && (
         <Modal
@@ -273,9 +232,10 @@ const Feature = () => {
 
             <button
               onClick={() => {
-                dispatch(deleteFeature(selectedFeature.id)).then(() => {
-                  setShowDeleteModal(false);
-                });
+                   dispatch(deleteFeature(selectedFeature.id)).then(() => {
+                     setShowDeleteModal(false);
+                     dispatch(fetchAllFeature({ page, limit, search }));
+                   });
               }}
               className="px-4 py-2 bg-red-600 text-white rounded-md"
             >

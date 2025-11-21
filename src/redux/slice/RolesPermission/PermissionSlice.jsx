@@ -4,13 +4,18 @@ import { apiInstance } from "../../../config/axiosInstance";
 
 export const fetchAllPermission = createAsyncThunk(
   "permission/fetchAllPermission",
-  async (_, thunkAPI) => {
+  async ({ page = 1, limit = 10, search = "" } = {}, thunkAPI) => {
     const token = localStorage.getItem("token");
     if (!token) {
       return thunkAPI.rejectWithValue("No token found, please login first.");
     }
     try {
-      const response = await fetch(`${baseUrl}/api/admin/getAllPermission`, {
+      const url = new URL(`${baseUrl}/api/admin/getAllPermission`);
+      url.searchParams.append("page", page);
+      url.searchParams.append("limit", limit);
+      if (search) url.searchParams.append("search", search);
+
+      const response = await fetch(url.toString(), {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -87,6 +92,7 @@ const permissionSlice = createSlice({
     Permissions: [],
     loading: false,
     error: null,
+    pagination: { page: 1, limit: 10, totalPages: 1, totalRecords: 0 },
   },
   reducers: {},
   extraReducers: (builder) => {
@@ -95,7 +101,14 @@ const permissionSlice = createSlice({
         state.loading = true;
       })
       .addCase(fetchAllPermission.fulfilled, (state, action) => {
-        state.Permissions = action.payload.permissions;
+        state.Permissions = action.payload.permissions || action.payload.Permissions || [];
+        const p = action.payload.pagination || action.payload.Pagination || {};
+        state.pagination = {
+          page: p.page || state.pagination.page,
+          limit: p.limit || state.pagination.limit,
+          totalPages: p.totalPages || 1,
+          totalRecords: p.totalRecords || 0,
+        };
         state.loading = false;
       })
       .addCase(fetchAllPermission.rejected, (state, action) => {
