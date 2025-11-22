@@ -2,6 +2,7 @@ import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import { baseUrl } from "../../../config/api";
 import { apiInstance } from "../../../config/axiosInstance";
 
+// all gavge type
 export const fetchAllGavge = createAsyncThunk(
   "gavge/fetchAllGavge",
   async (_, thunkAPI) => {
@@ -26,6 +27,7 @@ export const fetchAllGavge = createAsyncThunk(
   }
 );
 
+// create gavge type
 export const addGavgeType = createAsyncThunk(
   "gavge/addGavgeType",
   async (payload, thunkAPI) => {
@@ -54,6 +56,7 @@ export const addGavgeType = createAsyncThunk(
   }
 );
 
+// updateGavge
 export const updateGavge = createAsyncThunk(
   "gavge/updateGavge",
   async ({ id, updatedData }, thunkAPI) => {
@@ -70,6 +73,7 @@ export const updateGavge = createAsyncThunk(
   }
 );
 
+// deleteGavge
 export const deleteGavge = createAsyncThunk(
   "gavge/deleteGavge",
   async (id, thunkAPI) => {
@@ -107,9 +111,7 @@ const gavgeSlice = createSlice({
         state.Gavges.push(action.payload.data);
       })
       .addCase(deleteGavge.fulfilled, (state, action) => {
-        state.Gavges = state.Gavges.filter(
-          (g) => g.id !== action.payload.id
-        );
+        state.Gavges = state.Gavges.filter((g) => g.id !== action.payload.id);
       });
   },
 });

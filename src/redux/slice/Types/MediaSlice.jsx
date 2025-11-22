@@ -2,6 +2,7 @@ import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import { baseUrl } from "../../../config/api";
 import { apiInstance } from "../../../config/axiosInstance";
 
+// allmedia
 export const fetchAllMedia = createAsyncThunk(
   "media/fetchAllMedia",
   async (_, thunkAPI) => {
@@ -25,6 +26,7 @@ export const fetchAllMedia = createAsyncThunk(
   }
 );
 
+// create Media
 export const addMedia = createAsyncThunk(
   "media/addMediaType",
   async ({ name, description }, thunkAPI) => {
@@ -41,6 +43,7 @@ export const addMedia = createAsyncThunk(
   }
 );
 
+// updateMedia
 export const updateMedia = createAsyncThunk(
   "media/updateMedia",
   async ({ id, updatedData }, thunkAPI) => {
@@ -56,6 +59,7 @@ export const updateMedia = createAsyncThunk(
   }
 );
 
+// deleteMedia
 export const deleteMedia = createAsyncThunk(
   "media/deleteMedia",
   async (id, thunkAPI) => {
