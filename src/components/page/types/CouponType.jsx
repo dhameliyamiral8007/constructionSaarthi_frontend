@@ -267,7 +267,12 @@ import React, { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { useDispatch, useSelector } from "react-redux";
 import { EllipsisVertical, X } from "lucide-react";
-import { createCoupon } from "../../../redux/slice/Types/couponSlice";
+import { 
+  createCoupon, 
+  fetchCoupons, 
+  updateCouponType, 
+  deleteCouponType 
+} from "../../../redux/slice/Types/couponSlice";
 import DataTable from "../../common/DataTable";
 
 const Coupon = () => {
@@ -278,54 +283,163 @@ const Coupon = () => {
 
   const [openMenuId, setOpenMenuId] = useState(null);
   const [showModal, setShowModal] = useState(false);
-  const [modalType, setModalType] = useState("add"); // "add" | "edit" | "view" | "delete"
+  const [modalType, setModalType] = useState("add");
   const [selectedCoupon, setSelectedCoupon] = useState(null);
   const [formState, setFormState] = useState({ name: "" });
-  const [page, setPage] = useState(pagination?.page || 1);
+  
+  // Initialize pagination state from Redux or defaults
+  const [page, setPage] = useState(pagination?.currentPage || 1);
   const [limit, setLimit] = useState(pagination?.limit || 10);
   const [search, setSearch] = useState("");
+
+  // Fetch coupons when page, limit, or search changes
+  useEffect(() => {
+    console.log("Fetching coupons with:", { page, limit, search });
+    dispatch(fetchCoupons({ page, limit, search }));
+  }, [dispatch, page, limit, search]);
+
+  // Update local state when Redux pagination changes
+  useEffect(() => {
+    if (pagination?.currentPage) {
+      setPage(pagination.currentPage);
+    }
+    if (pagination?.limit) {
+      setLimit(pagination.limit);
+    }
+  }, [pagination]);
 
   const handleFormChange = (e) => {
     setFormState({ ...formState, [e.target.name]: e.target.value });
   };
 
-  const handleSave = (e) => {
+  const handleSave = async (e) => {
     e.preventDefault();
-    if (!formState.name.trim()) return toast.error("Coupon name is required");
-    dispatch(createCoupon(formState)).then((res) => {
-      if (!res.error) {
+    if (!formState.name.trim()) {
+      return toast.error("Coupon name is required");
+    }
+
+    try {
+      const resultAction = await dispatch(createCoupon({ name: formState.name }));
+
+      if (createCoupon.fulfilled.match(resultAction)) {
         toast.success("Coupon added successfully!");
         setShowModal(false);
         setFormState({ name: "" });
+        // Refresh the list with current pagination
+        dispatch(fetchCoupons({ page, limit, search }));
+      } else if (createCoupon.rejected.match(resultAction)) {
+        const errorMessage = resultAction.payload || "Failed to add coupon";
+        toast.error(errorMessage);
       }
-    });
+    } catch (error) {
+      console.error("Error in handleSave:", error);
+      toast.error("An unexpected error occurred");
+    }
+  };
+
+  const handleUpdate = async (e) => {
+    e.preventDefault();
+    if (!formState.name.trim()) {
+      return toast.error("Coupon name is required");
+    }
+
+    if (!selectedCoupon) return;
+
+    try {
+      const resultAction = await dispatch(
+        updateCouponType({
+          id: selectedCoupon.id,
+          name: formState.name,
+        })
+      );
+
+      if (updateCouponType.fulfilled.match(resultAction)) {
+        toast.success("Coupon updated successfully!");
+        setShowModal(false);
+        setFormState({ name: "" });
+        // Refresh the list with current pagination
+        dispatch(fetchCoupons({ page, limit, search }));
+      } else if (updateCouponType.rejected.match(resultAction)) {
+        const errorMessage = resultAction.payload || "Failed to update coupon";
+        toast.error(errorMessage);
+      }
+    } catch (error) {
+      console.error("Error in handleUpdate:", error);
+      toast.error("An unexpected error occurred");
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!selectedCoupon) return;
+
+    try {
+      const resultAction = await dispatch(deleteCouponType(selectedCoupon.id));
+
+      if (deleteCouponType.fulfilled.match(resultAction)) {
+        toast.success("Coupon deleted successfully!");
+        setShowModal(false);
+        // Refresh the list with current pagination
+        dispatch(fetchCoupons({ page, limit, search }));
+      } else if (deleteCouponType.rejected.match(resultAction)) {
+        const errorMessage = resultAction.payload || "Failed to delete coupon";
+        toast.error(errorMessage);
+      }
+    } catch (error) {
+      console.error("Error in handleDelete:", error);
+      toast.error("An unexpected error occurred");
+    }
+  };
+
+  const handlePageChange = (newPage) => {
+    console.log("Page changing to:", newPage);
+    setPage(newPage);
+  };
+
+  const handleLimitChange = (newLimit) => {
+    console.log("Limit changing to:", newLimit);
+    setLimit(newLimit);
+    setPage(1); // Reset to first page when limit changes
+  };
+
+  const handleSearch = (searchTerm) => {
+    console.log("Search term:", searchTerm);
+    setSearch(searchTerm);
+    setPage(1); // Reset to first page when searching
   };
 
   const Modal = ({ title, children, onClose }) => (
     <div className="fixed inset-0 flex items-center justify-center z-50 backdrop-blur-xs bg-black/50">
-      {" "}
       <div className="bg-white rounded-xl w-[400px] p-6 relative">
-        {" "}
         <button
           onClick={onClose}
           className="absolute top-3 right-3 text-gray-500 hover:text-gray-700"
         >
-          {" "}
-          <X size={20} />{" "}
-        </button>{" "}
+          <X size={20} />
+        </button>
         <h2 className="text-xl font-semibold mb-4">{title}</h2>
-        {children}{" "}
-      </div>{" "}
+        {children}
+      </div>
     </div>
   );
 
   const columns = [
-    { header: "Name", accessor: "name" },
+    {
+      header: "Name",
+      accessor: "name",
+      cell: (row) => row.name || 'N/A'
+    },
     {
       header: "Date",
       accessor: "createdAt",
-      cell: (r) => new Date(r.createdAt).toLocaleDateString(),
-    },
+      cell: (row) => {
+        try {
+          return row.createdAt ? new Date(row.createdAt).toLocaleDateString() : 'N/A';
+        } catch (e) {
+          console.error("Error formatting date:", e, "Row data:", row);
+          return 'Invalid Date';
+        }
+      }
+    }
   ];
 
   const renderActions = (coupon) => (
@@ -336,8 +450,7 @@ const Coupon = () => {
         }
         className="p-2 rounded hover:bg-gray-100"
       >
-        {" "}
-        <EllipsisVertical />{" "}
+        <EllipsisVertical />
       </button>
       {openMenuId === coupon.id && (
         <div className="absolute right-0 top-8 bg-white border border-gray-200 shadow-md rounded-md w-32 z-50">
@@ -356,7 +469,7 @@ const Coupon = () => {
             className="block w-full text-left px-4 py-2 hover:bg-gray-100"
             onClick={() => {
               setSelectedCoupon(coupon);
-              setFormState({ ...coupon });
+              setFormState({ name: coupon.name });
               setModalType("edit");
               setShowModal(true);
               setOpenMenuId(null);
@@ -374,49 +487,52 @@ const Coupon = () => {
             }}
           >
             Delete
-          </button>{" "}
+          </button>
         </div>
-      )}{" "}
+      )}
     </div>
   );
 
+  // Ensure couponList is always an array
+  const tableData = Array.isArray(couponList) ? couponList : [];
+
   return (
     <div className="space-y-6 p-4 bg-gray-100 w-full min-h-screen">
-      {" "}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-        {" "}
         <div>
-          {" "}
-          <h1 className="text-2xl font-bold text-gray-900">Coupons</h1>{" "}
+          <h1 className="text-2xl font-bold text-gray-900">Coupons</h1>
+          {pagination && (
+            <p className="text-sm text-gray-600 mt-1">
+              Showing {tableData.length} of {pagination.totalRecords || 0} coupons
+              {pagination.totalPages > 1 && ` (Page ${page} of ${pagination.totalPages})`}
+            </p>
+          )}
         </div>
         <button
           onClick={() => {
             setModalType("add");
+            setFormState({ name: "" });
             setShowModal(true);
           }}
           className="mt-4 sm:mt-0 px-4 py-2 bg-[#B02E0C] text-white rounded-md hover:bg-[#8d270b]"
         >
-          + Add Coupon{" "}
-        </button>{" "}
+          + Add Coupon
+        </button>
       </div>
+
       <DataTable
         columns={columns}
-        data={couponList}
+        data={tableData}
         loading={loading}
         renderActions={renderActions}
-        rowKey={(row) => row.id}
+        rowKey={(row) => row.id || row._id || Math.random().toString()}
         showSearch
-        onSearch={(q) => {
-          setSearch(q);
-          setPage(1);
-        }}
+        onSearch={handleSearch}
         pagination={pagination}
-        onPageChange={setPage}
-        onLimitChange={(l) => {
-          setLimit(l);
-          setPage(1);
-        }}
+        onPageChange={handlePageChange}
+        onLimitChange={handleLimitChange}
       />
+
       {showModal && (
         <Modal
           title={
@@ -446,7 +562,7 @@ const Coupon = () => {
               />
               <button
                 type="submit"
-                className="w-full px-4 py-2 bg-[#B02E0C] text-white rounded-md"
+                className="w-full px-4 py-2 bg-[#B02E0C] text-white rounded-md hover:bg-[#8d270b]"
               >
                 {modalType === "add" ? "Save" : "Update"}
               </button>
@@ -460,7 +576,7 @@ const Coupon = () => {
               </p>
               <p>
                 <strong>Date:</strong>{" "}
-                {new Date(selectedCoupon.createdAt).toLocaleDateString()}
+                {selectedCoupon.createdAt ? new Date(selectedCoupon.createdAt).toLocaleDateString() : 'N/A'}
               </p>
             </div>
           )}
@@ -474,13 +590,13 @@ const Coupon = () => {
               <div className="flex justify-end gap-3 mt-4">
                 <button
                   onClick={() => setShowModal(false)}
-                  className="px-4 py-2 bg-gray-200 rounded-md"
+                  className="px-4 py-2 bg-gray-200 rounded-md hover:bg-gray-300"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleDelete}
-                  className="px-4 py-2 bg-red-600 text-white rounded-md"
+                  className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
                 >
                   Delete
                 </button>
