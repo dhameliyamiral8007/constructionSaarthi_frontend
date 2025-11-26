@@ -11,10 +11,10 @@ const ForgotPassword = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    navigate("/reset-pass"); 
+    navigate("/reset-pass");
   };
 
-  return (                                            
+  return (
     <div className="min-h-screen flex flex-col md:flex-row">
       <div className="flex-1 flex flex-col justify-center px-8 md:px-20 lg:px-32 py-12 bg-white">
         <button
