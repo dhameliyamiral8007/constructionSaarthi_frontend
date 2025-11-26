@@ -5,13 +5,18 @@ import { apiInstance } from "../../../config/axiosInstance";
 // allmedia
 export const fetchAllMedia = createAsyncThunk(
   "media/fetchAllMedia",
-  async (_, thunkAPI) => {
+  async ({ page = 1, limit = 10, search = "" } = {}, thunkAPI) => {
     const token = localStorage.getItem("token");
     if (!token) {
       return thunkAPI.rejectWithValue("No token found, please login first.");
     }
     try {
-      const response = await fetch(`${baseUrl}/api/media/media-types`, {
+      const url = new URL(`${baseUrl}/api/media/media-types`);
+      url.searchParams.append("page", page);
+      url.searchParams.append("limit", limit);
+      if (search) url.searchParams.append("search", search);
+
+      const response = await fetch(url.toString(), {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -19,6 +24,7 @@ export const fetchAllMedia = createAsyncThunk(
         },
       });
       const data = await response.json();
+      if (!response.ok) return thunkAPI.rejectWithValue(data.message || data.error || "Failed to fetch media types");
       return data;
     } catch (error) {
       return thunkAPI.rejectWithValue(error.message);
@@ -78,6 +84,7 @@ const mediaSlice = createSlice({
     mediaTypes: [],
     loading: false,
     error: null,
+    pagination: { page: 1, limit: 10, totalPages: 1, totalRecords: 0 },
   },
   reducers: {},
   extraReducers: (builder) => {
@@ -86,7 +93,16 @@ const mediaSlice = createSlice({
         state.loading = true;
       })
       .addCase(fetchAllMedia.fulfilled, (state, action) => {
-        state.mediaTypes = action.payload.mediaTypes;
+        const payload = action.payload || {};
+        // prefer payload.mediaTypes but accept common shapes
+        state.mediaTypes = payload.mediaTypes || payload.data || payload.items || [];
+        const p = payload.pagination || payload.Pagination || {};
+        state.pagination = {
+          page: p.page || state.pagination.page,
+          limit: p.limit || state.pagination.limit,
+          totalPages: p.totalPages || state.pagination.totalPages,
+          totalRecords: p.totalRecords || state.pagination.totalRecords,
+        };
         state.loading = false;
       })
       .addCase(fetchAllMedia.rejected, (state, action) => {
@@ -97,7 +113,8 @@ const mediaSlice = createSlice({
         state.loading = true;
       })
       .addCase(addMedia.fulfilled, (state, action) => {
-        state.mediaTypes.push(action.payload);
+        const created = action.payload?.data || action.payload?.mediaType || action.payload;
+        if (created) state.mediaTypes.unshift(created);
         state.loading = false;
       })
       .addCase(addMedia.rejected, (state, action) => {

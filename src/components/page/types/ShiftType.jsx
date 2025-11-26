@@ -275,7 +275,7 @@
 
 // export default Shift;
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { toast } from "react-toastify";
 import { useDispatch, useSelector } from "react-redux";
 import { EllipsisVertical, X } from "lucide-react";
@@ -302,10 +302,15 @@ const Shift = () => {
   const [page, setPage] = useState(pagination?.page || 1);
   const [limit, setLimit] = useState(pagination?.limit || 10);
   const [search, setSearch] = useState("");
+  const nameRef = useRef(null);
 
   useEffect(() => {
     dispatch(fetchShiftTypes({ page, limit, search }));
   }, [dispatch, page, limit, search]);
+
+  useEffect(() => {
+    if (showModal) setTimeout(() => nameRef.current?.focus(), 0);
+  }, [showModal]);
 
   const handleFormChange = (e) => {
     setFormState({ ...formState, [e.target.name]: e.target.value });
@@ -491,11 +496,11 @@ const Shift = () => {
                 <input
                   type="text"
                   name="name"
+                  ref={nameRef}
                   value={formState.name}
                   onChange={handleFormChange}
                   className="w-full border px-3 py-2 rounded-md"
                   required
-                  autoFocus
                 />
               </div>
               <button

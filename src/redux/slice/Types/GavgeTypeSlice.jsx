@@ -5,13 +5,18 @@ import { apiInstance } from "../../../config/axiosInstance";
 // all gavge type
 export const fetchAllGavge = createAsyncThunk(
   "gavge/fetchAllGavge",
-  async (_, thunkAPI) => {
+  async ({ page = 1, limit = 10, search = "" } = {}, thunkAPI) => {
     const token = localStorage.getItem("token");
     if (!token) {
       return thunkAPI.rejectWithValue("No token found, please login first.");
     }
     try {
-      const response = await fetch(`${baseUrl}/api/gauge-type/all`, {
+      const url = new URL(`${baseUrl}/api/gauge-type/all`);
+      url.searchParams.append("page", page);
+      url.searchParams.append("limit", limit);
+      if (search) url.searchParams.append("search", search);
+
+      const response = await fetch(url.toString(), {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -20,6 +25,7 @@ export const fetchAllGavge = createAsyncThunk(
       });
 
       const data = await response.json();
+      if (!response.ok) return thunkAPI.rejectWithValue(data.message || data.error || "Failed to fetch gauge types");
       return data;
     } catch (error) {
       return thunkAPI.rejectWithValue(error.message);
@@ -92,6 +98,7 @@ const gavgeSlice = createSlice({
     Gavges: [],
     loading: false,
     error: null,
+    pagination: { page: 1, limit: 10, totalPages: 1, totalRecords: 0 },
   },
   reducers: {},
   extraReducers: (builder) => {
@@ -100,7 +107,18 @@ const gavgeSlice = createSlice({
         state.loading = true;
       })
       .addCase(fetchAllGavge.fulfilled, (state, action) => {
-        state.Gavges = action.payload.gavgeTypes || [];
+        // backend may return `gaugeTypes` (correct spelling) or `gavgeTypes` (typo),
+        // accept both and several common shapes.
+        const payload = action.payload || {};
+        state.Gavges =
+          payload.gaugeTypes || payload.gavgeTypes || payload.data || payload.items || [];
+        const p = payload.pagination || payload.Pagination || {};
+        state.pagination = {
+          page: p.page || state.pagination.page,
+          limit: p.limit || state.pagination.limit,
+          totalPages: p.totalPages || state.pagination.totalPages,
+          totalRecords: p.totalRecords || state.pagination.totalRecords,
+        };
         state.loading = false;
       })
       .addCase(fetchAllGavge.rejected, (state, action) => {
@@ -108,7 +126,9 @@ const gavgeSlice = createSlice({
         state.loading = false;
       })
       .addCase(addGavgeType.fulfilled, (state, action) => {
-        state.Gavges.push(action.payload.data);
+        // action.payload may include created item in different shapes
+        const created = action.payload?.data || action.payload?.gaugeType || action.payload || null;
+        if (created) state.Gavges.unshift(created);
       })
       .addCase(deleteGavge.fulfilled, (state, action) => {
         state.Gavges = state.Gavges.filter((g) => g.id !== action.payload.id);

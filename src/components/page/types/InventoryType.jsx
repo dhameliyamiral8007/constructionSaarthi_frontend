@@ -282,7 +282,7 @@
 
 // export default Inventory;
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { toast } from "react-toastify";
 import { useDispatch, useSelector } from "react-redux";
 import { EllipsisVertical, X } from "lucide-react";
@@ -306,10 +306,15 @@ const Inventory = () => {
   const [page, setPage] = useState(pagination?.page || 1);
   const [limit, setLimit] = useState(pagination?.limit || 10);
   const [search, setSearch] = useState("");
+  const nameRef = useRef(null);
 
   useEffect(() => {
     dispatch(fetchInventory({ page, limit, search }));
   }, [dispatch, page, limit, search]);
+
+  useEffect(() => {
+    if (showModal) setTimeout(() => nameRef.current?.focus(), 0);
+  }, [showModal]);
 
   const handleFormChange = (e) => {
     setFormState({ ...formState, [e.target.name]: e.target.value });
@@ -466,13 +471,14 @@ const Inventory = () => {
               }}
             >
               <label>Name</label>
-              <input
-                type="text"
-                name="name"
-                value={formState.name}
-                onChange={handleFormChange}
-                className="w-full border px-3 py-2 rounded-md"
-              />
+                <input
+                  type="text"
+                  name="name"
+                  ref={nameRef}
+                  value={formState.name}
+                  onChange={handleFormChange}
+                  className="w-full border px-3 py-2 rounded-md"
+                />
               <button
                 type="submit"
                 className="w-full px-4 py-2 bg-[#B02E0C] text-white rounded-md"

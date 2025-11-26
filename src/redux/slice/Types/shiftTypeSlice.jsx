@@ -5,10 +5,13 @@ import { apiInstance } from "../../../config/axiosInstance";
 // GET SHIFT TYPES
 export const fetchShiftTypes = createAsyncThunk(
   "shiftTypes/fetchShiftTypes",
-  async (_, thunkAPI) => {
+  async ({ page = 1, limit = 10, search = "" } = {}, thunkAPI) => {
     try {
-      const res = await apiInstance.get(`${baseUrl}/api/shift-type`);
-      return res.data.shiftTypes; // API RESPONSE => { shiftTypes: [ ... ] }
+      const res = await apiInstance.get(`${baseUrl}/api/shift-type`, {
+        params: { page, limit, search },
+      });
+      // return the whole payload so reducer can read shiftTypes and pagination
+      return res.data; // expected: { shiftTypes: [...], pagination: { page, limit, totalPages, totalRecords } }
     } catch (err) {
       return thunkAPI.rejectWithValue(err.response?.data || "Error");
     }
@@ -71,6 +74,7 @@ const shiftTypeSlice = createSlice({
     list: [],
     loading: false,
     error: null,
+    pagination: { page: 1, limit: 10, totalPages: 1, totalRecords: 0 },
   },
   reducers: {},
   extraReducers: (builder) => {
@@ -80,7 +84,15 @@ const shiftTypeSlice = createSlice({
       })
       .addCase(fetchShiftTypes.fulfilled, (state, action) => {
         state.loading = false;
-        state.list = action.payload;
+        const payload = action.payload || {};
+        state.list = payload.shiftTypes || payload.data || payload.items || [];
+        const p = payload.pagination || payload.Pagination || {};
+        state.pagination = {
+          page: p.page || state.pagination.page,
+          limit: p.limit || state.pagination.limit,
+          totalPages: p.totalPages || state.pagination.totalPages,
+          totalRecords: p.totalRecords || state.pagination.totalRecords,
+        };
       })
       .addCase(fetchShiftTypes.rejected, (state, action) => {
         state.loading = false;

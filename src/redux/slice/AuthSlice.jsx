@@ -25,7 +25,9 @@ export const sendOtp = createAsyncThunk(
           data?.success === false || data?.status === "error" || Boolean(data?.error);
 
         if (!response.ok || apiFailure) {
-          const msg = (data && (data.message || data.error)) || `Failed to send OTP (status ${response.status})`;
+          // Prefer explicit `error` field from backend when available (e.g. "Admin not found"),
+          // otherwise fall back to `message`.
+          const msg = (data && (data.error || data.message)) || `Failed to send OTP (status ${response.status})`;
           return thunkAPI.rejectWithValue(msg);
         }
 

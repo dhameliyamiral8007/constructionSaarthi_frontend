@@ -104,6 +104,65 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import { baseUrl } from "../../../config/api";
 
+// Fetch Inventory (supports pagination/search)
+export const fetchInventory = createAsyncThunk(
+  "inventory/fetchInventory",
+  async ({ page = 1, limit = 10, search = "" } = {}, thunkAPI) => {
+    const token = localStorage.getItem("token");
+    if (!token) return thunkAPI.rejectWithValue("No token found");
+
+    try {
+      const url = new URL(`${baseUrl}/api/inventory/all`);
+      url.searchParams.append("page", page);
+      url.searchParams.append("limit", limit);
+      if (search) url.searchParams.append("search", search);
+
+      const res = await fetch(url.toString(), {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = await res.json();
+      if (!res.ok) return thunkAPI.rejectWithValue(data.message || "Failed to fetch");
+
+      // accept a few payload shapes
+      return data;
+    } catch (err) {
+      return thunkAPI.rejectWithValue(err.message);
+    }
+  }
+);
+
+// Create Inventory
+export const createInventory = createAsyncThunk(
+  "inventory/createInventory",
+  async ({ name }, thunkAPI) => {
+    const token = localStorage.getItem("token");
+    if (!token) return thunkAPI.rejectWithValue("No token found");
+
+    try {
+      const res = await fetch(`${baseUrl}/api/inventory/create`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ name }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) return thunkAPI.rejectWithValue(data.message || "Failed to create");
+
+      // normalize to { inventory }
+      return { inventory: data.inventory || data };
+    } catch (err) {
+      return thunkAPI.rejectWithValue(err.message);
+    }
+  }
+);
+
 // Update Inventory
 export const updateInventory = createAsyncThunk(
   "inventory/updateInventory",
@@ -122,9 +181,8 @@ export const updateInventory = createAsyncThunk(
       });
 
       const data = await res.json();
-      if (!res.ok)
-        return thunkAPI.rejectWithValue(data.message || "Update failed");
-      return data; // updated inventory
+      if (!res.ok) return thunkAPI.rejectWithValue(data.message || "Update failed");
+      return { inventory: data.inventory || data };
     } catch (error) {
       return thunkAPI.rejectWithValue(error.message);
     }
@@ -147,8 +205,7 @@ export const deleteInventory = createAsyncThunk(
       });
 
       const data = await res.json();
-      if (!res.ok)
-        return thunkAPI.rejectWithValue(data.message || "Delete failed");
+      if (!res.ok) return thunkAPI.rejectWithValue(data.message || "Delete failed");
       return id; // return deleted inventory id
     } catch (error) {
       return thunkAPI.rejectWithValue(error.message);
@@ -162,6 +219,7 @@ const inventorySlice = createSlice({
     inventoryList: [],
     loading: false,
     error: null,
+    pagination: { page: 1, limit: 10, totalPages: 1, totalRecords: 0 },
   },
   reducers: {},
   extraReducers: (builder) => {
@@ -173,11 +231,19 @@ const inventorySlice = createSlice({
       })
       .addCase(fetchInventory.fulfilled, (state, action) => {
         state.loading = false;
-        state.inventoryList = action.payload;
+        // payload may contain list and pagination, accept common shapes
+        state.inventoryList = action.payload.inventory || action.payload.inventoryTypes || action.payload.items || action.payload.data || [];
+        const p = action.payload.pagination || action.payload.Pagination || {};
+        state.pagination = {
+          page: p.page || state.pagination.page,
+          limit: p.limit || state.pagination.limit,
+          totalPages: p.totalPages || state.pagination.totalPages,
+          totalRecords: p.totalRecords || state.pagination.totalRecords,
+        };
       })
       .addCase(fetchInventory.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload;
+        state.error = action.payload || action.error?.message;
       })
 
       // Create
@@ -186,11 +252,11 @@ const inventorySlice = createSlice({
       })
       .addCase(createInventory.fulfilled, (state, action) => {
         state.loading = false;
-        state.inventoryList.push(action.payload.inventory);
+        if (action.payload && action.payload.inventory) state.inventoryList.unshift(action.payload.inventory);
       })
       .addCase(createInventory.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload;
+        state.error = action.payload || action.error?.message;
       })
 
       // Update
@@ -199,14 +265,13 @@ const inventorySlice = createSlice({
       })
       .addCase(updateInventory.fulfilled, (state, action) => {
         state.loading = false;
-        const idx = state.inventoryList.findIndex(
-          (i) => i.id === action.payload.inventory.id
-        );
-        if (idx !== -1) state.inventoryList[idx] = action.payload.inventory;
+        const updated = action.payload.inventory;
+        const idx = state.inventoryList.findIndex((i) => i.id === updated?.id);
+        if (idx !== -1) state.inventoryList[idx] = updated;
       })
       .addCase(updateInventory.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload;
+        state.error = action.payload || action.error?.message;
       })
 
       // Delete
@@ -215,13 +280,11 @@ const inventorySlice = createSlice({
       })
       .addCase(deleteInventory.fulfilled, (state, action) => {
         state.loading = false;
-        state.inventoryList = state.inventoryList.filter(
-          (i) => i.id !== action.payload
-        );
+        state.inventoryList = state.inventoryList.filter((i) => i.id !== action.payload);
       })
       .addCase(deleteInventory.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload;
+        state.error = action.payload || action.error?.message;
       });
   },
 });
