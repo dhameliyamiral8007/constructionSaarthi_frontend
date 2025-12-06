@@ -282,6 +282,255 @@
 
 // export default Inventory;
 
+// import React, { useEffect, useState, useRef } from "react";
+// import { toast } from "react-toastify";
+// import { useDispatch, useSelector } from "react-redux";
+// import { EllipsisVertical, X } from "lucide-react";
+// import {
+//   createInventory,
+//   fetchInventory,
+// } from "../../../redux/slice/Types/inventorySlice";
+// import DataTable from "../../common/DataTable";
+
+// const Inventory = () => {
+//   const dispatch = useDispatch();
+//   const { inventoryList, loading, pagination } = useSelector(
+//     (state) => state.inventory
+//   );
+
+//   const [openMenuId, setOpenMenuId] = useState(null);
+//   const [showModal, setShowModal] = useState(false);
+//   const [modalType, setModalType] = useState("add"); // "add" | "edit" | "view" | "delete"
+//   const [selectedInventory, setSelectedInventory] = useState(null);
+//   const [formState, setFormState] = useState({ name: "" });
+//   const [page, setPage] = useState(pagination?.page || 1);
+//   const [limit, setLimit] = useState(pagination?.limit || 10);
+//   const [search, setSearch] = useState("");
+//   const nameRef = useRef(null);
+
+//   useEffect(() => {
+//     dispatch(fetchInventory({ page, limit, search }));
+//   }, [dispatch, page, limit, search]);
+
+//   useEffect(() => {
+//     if (showModal) setTimeout(() => nameRef.current?.focus(), 0);
+//   }, [showModal]);
+
+//   const handleFormChange = (e) => {
+//     setFormState({ ...formState, [e.target.name]: e.target.value });
+//   };
+
+//   const handleSave = () => {
+//     if (!formState.name.trim()) return toast.error("Name is required");
+//     dispatch(createInventory(formState)).then((res) => {
+//       if (!res.error) {
+//         toast.success("Inventory added successfully!");
+//         setShowModal(false);
+//         setFormState({ name: "" });
+//         dispatch(fetchInventory({ page, limit, search }));
+//       } else toast.error(res.payload || "Failed to create inventory");
+//     });
+//   };
+
+//   const Modal = ({ title, children, onClose }) => (
+//     <div className="fixed inset-0 flex items-center justify-center z-50 backdrop-blur-xs bg-black/50">
+//       {" "}
+//       <div className="bg-white rounded-xl w-[400px] p-6 relative">
+//         {" "}
+//         <button
+//           onClick={onClose}
+//           className="absolute top-3 right-3 text-gray-500 hover:text-gray-700"
+//         >
+//           {" "}
+//           <X size={20} />{" "}
+//         </button>{" "}
+//         <h2 className="text-xl font-semibold mb-4">{title}</h2>
+//         {children}{" "}
+//       </div>{" "}
+//     </div>
+//   );
+
+//   const columns = [
+//     { header: "Name", accessor: "name" },
+//     {
+//       header: "Date",
+//       accessor: "createdAt",
+//       cell: (r) => new Date(r.createdAt).toLocaleDateString(),
+//     },
+//   ];
+
+//   const renderActions = (item) => (
+//     <div className="relative">
+//       <button
+//         onClick={() => setOpenMenuId(openMenuId === item.id ? null : item.id)}
+//         className="p-2 rounded hover:bg-gray-100"
+//       >
+//         {" "}
+//         <EllipsisVertical />{" "}
+//       </button>
+//       {openMenuId === item.id && (
+//         <div className="absolute right-0 top-8 bg-white border border-gray-200 shadow-md rounded-md w-32 z-50">
+//           <button
+//             className="block w-full text-left px-4 py-2 hover:bg-gray-100"
+//             onClick={() => {
+//               setSelectedInventory(item);
+//               setModalType("view");
+//               setShowModal(true);
+//               setOpenMenuId(null);
+//             }}
+//           >
+//             View{" "}
+//           </button>
+//           <button
+//             className="block w-full text-left px-4 py-2 hover:bg-gray-100"
+//             onClick={() => {
+//               setSelectedInventory(item);
+//               setFormState({ ...item });
+//               setModalType("edit");
+//               setShowModal(true);
+//               setOpenMenuId(null);
+//             }}
+//           >
+//             Edit{" "}
+//           </button>
+//           <button
+//             className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-red-600"
+//             onClick={() => {
+//               setSelectedInventory(item);
+//               setModalType("delete");
+//               setShowModal(true);
+//               setOpenMenuId(null);
+//             }}
+//           >
+//             Delete{" "}
+//           </button>{" "}
+//         </div>
+//       )}{" "}
+//     </div>
+//   );
+
+//   return (
+//     <div className="space-y-6 p-4 bg-gray-100 w-full min-h-screen">
+//       {" "}
+//       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+//         {" "}
+//         <div>
+//           {" "}
+//           <h1 className="text-2xl font-bold text-gray-900">
+//             Inventory Types
+//           </h1>{" "}
+//           <p className="text-gray-600">Manage all Inventory types here.</p>{" "}
+//         </div>
+//         <button
+//           onClick={() => {
+//             setModalType("add");
+//             setShowModal(true);
+//           }}
+//           className="mt-4 sm:mt-0 px-4 py-2 bg-[#B02E0C] text-white rounded-md hover:bg-[#8d270b]"
+//         >
+//           + Add Inventory{" "}
+//         </button>{" "}
+//       </div>
+//       <DataTable
+//         columns={columns}
+//         data={inventoryList}
+//         loading={loading}
+//         renderActions={renderActions}
+//         rowKey={(row) => row.id}
+//         showSearch={true}
+//         onSearch={(q) => {
+//           setSearch(q);
+//           setPage(1);
+//         }}
+//         pagination={pagination}
+//         onPageChange={setPage}
+//         onLimitChange={(l) => {
+//           setLimit(l);
+//           setPage(1);
+//         }}
+//       />
+//       {showModal && (
+//         <Modal
+//           title={
+//             modalType === "add"
+//               ? "Add Inventory"
+//               : modalType === "edit"
+//               ? "Edit Inventory"
+//               : modalType === "view"
+//               ? "View Inventory"
+//               : "Delete Inventory"
+//           }
+//           onClose={() => setShowModal(false)}
+//         >
+//           {(modalType === "add" || modalType === "edit") && (
+//             <form
+//               className="space-y-4"
+//               onSubmit={(e) => {
+//                 e.preventDefault();
+//                 modalType === "add" ? handleSave() : handleUpdate();
+//               }}
+//             >
+//               <label>Name</label>
+//                 <input
+//                   type="text"
+//                   name="name"
+//                   ref={nameRef}
+//                   value={formState.name}
+//                   onChange={handleFormChange}
+//                   className="w-full border px-3 py-2 rounded-md"
+//                 />
+//               <button
+//                 type="submit"
+//                 className="w-full px-4 py-2 bg-[#B02E0C] text-white rounded-md"
+//               >
+//                 {modalType === "add" ? "Save" : "Update"}
+//               </button>
+//             </form>
+//           )}
+
+//           {modalType === "view" && selectedInventory && (
+//             <div className="space-y-2">
+//               <p>
+//                 <strong>Name:</strong> {selectedInventory.name}
+//               </p>
+//               <p>
+//                 <strong>Date:</strong>{" "}
+//                 {new Date(selectedInventory.createdAt).toLocaleDateString()}
+//               </p>
+//             </div>
+//           )}
+
+//           {modalType === "delete" && selectedInventory && (
+//             <div>
+//               <p>
+//                 Are you sure you want to delete{" "}
+//                 <strong>{selectedInventory.name}</strong>?
+//               </p>
+//               <div className="flex justify-end gap-3 mt-4">
+//                 <button
+//                   onClick={() => setShowModal(false)}
+//                   className="px-4 py-2 bg-gray-200 rounded-md"
+//                 >
+//                   Cancel
+//                 </button>
+//                 <button
+//                   onClick={handleDelete}
+//                   className="px-4 py-2 bg-red-600 text-white rounded-md"
+//                 >
+//                   Delete
+//                 </button>
+//               </div>
+//             </div>
+//           )}
+//         </Modal>
+//       )}
+//     </div>
+//   );
+// };
+
+// export default Inventory;
+
+
 import React, { useEffect, useState, useRef } from "react";
 import { toast } from "react-toastify";
 import { useDispatch, useSelector } from "react-redux";
@@ -289,6 +538,8 @@ import { EllipsisVertical, X } from "lucide-react";
 import {
   createInventory,
   fetchInventory,
+  updateInventory,
+  deleteInventory,
 } from "../../../redux/slice/Types/inventorySlice";
 import DataTable from "../../common/DataTable";
 
@@ -332,28 +583,51 @@ const Inventory = () => {
     });
   };
 
+  const handleUpdate = () => {
+    if (!formState.name.trim()) return toast.error("Name is required");
+    dispatch(updateInventory({ id: selectedInventory.id, ...formState })).then((res) => {
+      if (!res.error) {
+        toast.success("Inventory updated successfully!");
+        setShowModal(false);
+        setSelectedInventory(null);
+        setFormState({ name: "" });
+        dispatch(fetchInventory({ page, limit, search }));
+      } else toast.error(res.payload || "Failed to update inventory");
+    });
+  };
+
+  const handleDelete = () => {
+    dispatch(deleteInventory(selectedInventory.id)).then((res) => {
+      if (!res.error) {
+        toast.success("Inventory deleted successfully!");
+        setShowModal(false);
+        setSelectedInventory(null);
+        dispatch(fetchInventory({ page, limit, search }));
+      } else toast.error(res.payload || "Failed to delete inventory");
+    });
+  };
+
   const Modal = ({ title, children, onClose }) => (
     <div className="fixed inset-0 flex items-center justify-center z-50 backdrop-blur-xs bg-black/50">
-      {" "}
       <div className="bg-white rounded-xl w-[400px] p-6 relative">
-        {" "}
         <button
           onClick={onClose}
           className="absolute top-3 right-3 text-gray-500 hover:text-gray-700"
         >
-          {" "}
-          <X size={20} />{" "}
-        </button>{" "}
+          <X size={20} />
+        </button>
         <h2 className="text-xl font-semibold mb-4">{title}</h2>
-        {children}{" "}
-      </div>{" "}
+        {children}
+      </div>
     </div>
   );
 
   const columns = [
+    // { header: "ID", accessor: "id" },
     { header: "Name", accessor: "name" },
+    { header: "Active", accessor: "is_active", cell: (r) => (r.is_active ? "Yes" : "No") },
     {
-      header: "Date",
+      header: "Created At",
       accessor: "createdAt",
       cell: (r) => new Date(r.createdAt).toLocaleDateString(),
     },
@@ -365,8 +639,7 @@ const Inventory = () => {
         onClick={() => setOpenMenuId(openMenuId === item.id ? null : item.id)}
         className="p-2 rounded hover:bg-gray-100"
       >
-        {" "}
-        <EllipsisVertical />{" "}
+        <EllipsisVertical />
       </button>
       {openMenuId === item.id && (
         <div className="absolute right-0 top-8 bg-white border border-gray-200 shadow-md rounded-md w-32 z-50">
@@ -379,7 +652,7 @@ const Inventory = () => {
               setOpenMenuId(null);
             }}
           >
-            View{" "}
+            View
           </button>
           <button
             className="block w-full text-left px-4 py-2 hover:bg-gray-100"
@@ -391,7 +664,7 @@ const Inventory = () => {
               setOpenMenuId(null);
             }}
           >
-            Edit{" "}
+            Edit
           </button>
           <button
             className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-red-600"
@@ -402,24 +675,19 @@ const Inventory = () => {
               setOpenMenuId(null);
             }}
           >
-            Delete{" "}
-          </button>{" "}
+            Delete
+          </button>
         </div>
-      )}{" "}
+      )}
     </div>
   );
 
   return (
     <div className="space-y-6 p-4 bg-gray-100 w-full min-h-screen">
-      {" "}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-        {" "}
         <div>
-          {" "}
-          <h1 className="text-2xl font-bold text-gray-900">
-            Inventory Types
-          </h1>{" "}
-          <p className="text-gray-600">Manage all Inventory types here.</p>{" "}
+          <h1 className="text-2xl font-bold text-gray-900">Inventory Types</h1>
+          <p className="text-gray-600">Manage all Inventory types here.</p>
         </div>
         <button
           onClick={() => {
@@ -428,9 +696,10 @@ const Inventory = () => {
           }}
           className="mt-4 sm:mt-0 px-4 py-2 bg-[#B02E0C] text-white rounded-md hover:bg-[#8d270b]"
         >
-          + Add Inventory{" "}
-        </button>{" "}
+          + Add Inventory
+        </button>
       </div>
+
       <DataTable
         columns={columns}
         data={inventoryList}
@@ -449,6 +718,7 @@ const Inventory = () => {
           setPage(1);
         }}
       />
+
       {showModal && (
         <Modal
           title={
@@ -471,14 +741,14 @@ const Inventory = () => {
               }}
             >
               <label>Name</label>
-                <input
-                  type="text"
-                  name="name"
-                  ref={nameRef}
-                  value={formState.name}
-                  onChange={handleFormChange}
-                  className="w-full border px-3 py-2 rounded-md"
-                />
+              <input
+                type="text"
+                name="name"
+                ref={nameRef}
+                value={formState.name}
+                onChange={handleFormChange}
+                className="w-full border px-3 py-2 rounded-md"
+              />
               <button
                 type="submit"
                 className="w-full px-4 py-2 bg-[#B02E0C] text-white rounded-md"
@@ -491,10 +761,16 @@ const Inventory = () => {
           {modalType === "view" && selectedInventory && (
             <div className="space-y-2">
               <p>
+                <strong>ID:</strong> {selectedInventory.id}
+              </p>
+              <p>
                 <strong>Name:</strong> {selectedInventory.name}
               </p>
               <p>
-                <strong>Date:</strong>{" "}
+                <strong>Active:</strong> {selectedInventory.is_active ? "Yes" : "No"}
+              </p>
+              <p>
+                <strong>Created At:</strong>{" "}
                 {new Date(selectedInventory.createdAt).toLocaleDateString()}
               </p>
             </div>
@@ -503,8 +779,7 @@ const Inventory = () => {
           {modalType === "delete" && selectedInventory && (
             <div>
               <p>
-                Are you sure you want to delete{" "}
-                <strong>{selectedInventory.name}</strong>?
+                Are you sure you want to delete <strong>{selectedInventory.name}</strong>?
               </p>
               <div className="flex justify-end gap-3 mt-4">
                 <button

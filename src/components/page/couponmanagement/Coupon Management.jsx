@@ -133,8 +133,8 @@ const CouponManagement = () => {
             </div>
           </div>
         </div>
-        <table className="w-full text-left border-t border-gray-200">
-          <thead className="bg-gray-50">
+        <table className=" overflow-x-auto overflow-scroll text-left border-t border-gray-200">
+          <thead className="bg-gray-50 w-10">
             <tr>
               <th className="py-3 px-4 border border-gray-300 text-sm"></th>
               <th className="py-3 px-4 border border-gray-300 text-gray-700 font-normal">

@@ -14,7 +14,7 @@ const Subscriptions = () => {
   const navigate = useNavigate();
 
   const handleManagePlans = () => {
-    navigate("/dashboard/manage-plans");
+    navigate("/manage-plans");
   };
 
   const users = [
@@ -25,7 +25,7 @@ const Subscriptions = () => {
       plan: "12 Months",
       amount: "₹12,000",
       nextRenewal: "21 Oct, 2025",
-      status: "active",
+      status: "Active",
       phone: "347-452-3594",
       joined: "21 Oct, 2024",
     },
@@ -47,7 +47,7 @@ const Subscriptions = () => {
       plan: "Monthly",
       amount: "₹1,200",
       nextRenewal: "01 Nov, 2024",
-      status: "active",
+      status: "Active",
       phone: "556-343-4273",
       joined: "21 Oct, 2024",
     },
@@ -58,7 +58,7 @@ const Subscriptions = () => {
       plan: "3 Months",
       amount: "₹3,500",
       nextRenewal: "21 Jan, 2025",
-      status: "active",
+      status: "Active",
       phone: "903-759-6505",
       joined: "21 Oct, 2024",
     },
@@ -80,7 +80,7 @@ const Subscriptions = () => {
       plan: "Monthly",
       amount: "₹1,200",
       nextRenewal: "01 Nov, 2024",
-      status: "active",
+      status: "Active",
       phone: "684-742-2531",
       joined: "21 Oct, 2024",
     },
@@ -102,7 +102,7 @@ const Subscriptions = () => {
       plan: "3 Months",
       amount: "₹3,500",
       nextRenewal: "21 Jan, 2025",
-      status: "active",
+      status: "Active",
       phone: "874-768-4777",
       joined: "21 Oct, 2024",
     },
@@ -113,7 +113,7 @@ const Subscriptions = () => {
       plan: "6 Months",
       amount: "₹6,000",
       nextRenewal: "15 Apr, 2025",
-      status: "active",
+      status: "Active",
       phone: "902-499-1355",
       joined: "21 Oct, 2024",
     },
@@ -245,7 +245,13 @@ const Subscriptions = () => {
                   {user.plan}
                 </td>
                 <td className="py-2 px-4 border border-gray-300 text-gray-700">
-                  {user.status}
+                  <div className="px-2.5 py-1.5 border-2 border-green-300 bg-green-100 rounded-full flex flex-row gap-1">
+                    {" "}
+                    <div className="rounded-full mt-[0.6rem] w-2 h-2 bg-[#04B440]"></div>
+                    <span className="text-[#04B440] font-semibold">
+                      {user.status}
+                    </span>
+                  </div>
                 </td>
                 <td className="py-2 px-4 border border-gray-300 text-gray-700">
                   {user.amount}
