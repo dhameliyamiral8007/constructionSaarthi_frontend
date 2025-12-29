@@ -8,6 +8,10 @@ import mediaReducer from "./slice/Types/MediaSlice";
 import inventoryReducer from "./slice/Types/inventorySlice";
 import couponReducer from "./slice/Types/couponSlice";
 import shiftTypeReducer from "./slice/Types/shiftTypeSlice";
+import userReducer from "./slice/UserSlice";
+import promptReducer from "./slice/PromptSlice";
+import promptReferenceReducer from "./slice/PromptReferenceSlice";
+import pmFeatureReducer from "./slice/PMFeatureSlice";
 
 export const store = configureStore({
   reducer: {
@@ -20,5 +24,9 @@ export const store = configureStore({
     inventory: inventoryReducer,
     coupon: couponReducer,
     shiftTypes: shiftTypeReducer,
+    user: userReducer,
+    prompt: promptReducer,
+    promptReference: promptReferenceReducer,
+    pmFeature: pmFeatureReducer,
   },
 });

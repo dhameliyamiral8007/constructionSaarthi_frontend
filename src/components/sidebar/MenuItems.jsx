@@ -9,6 +9,7 @@ import {
   Settings,
   HelpCircle,
   Apple,
+  MessageCircle,
 } from "lucide-react";
 import { RiDiscountPercentLine } from "react-icons/ri";
 
@@ -47,6 +48,11 @@ export const MenuItems = [
     name: "Coupon Management",
     link: "/coupon-management",
     icon: <RiDiscountPercentLine  size={22} />,
+  },
+  {
+    name: "Prompts Management",
+    link: "/prompts",
+    icon: <MessageCircle size={22} />,
   },
   {
     name: "Support Logs",
@@ -123,7 +129,7 @@ export const MenuItems = [
         name: "Help",
         link: "/dashboard/help",
         icon: <HelpCircle size={18} />,
-      },
+      }
     ],
   },
 ];
