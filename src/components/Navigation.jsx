@@ -16,6 +16,7 @@ import Media from "./page/types/MediaType";
 import Shift from "./page/types/ShiftType";
 import Inventory from "./page/types/InventoryType";
 import Coupon from "./page/types/CouponType";
+import BankType from "./page/types/BankType";
 import OTPSend from "./page/auth/OTP";
 import CouponManagement from "./page/couponmanagement/Coupon Management";
 import CreatePrompt from "./page/prompts/CreatePrompt";
@@ -45,6 +46,7 @@ const Navigation = () => (
         <Route path="/shift" element={<Shift />} />
         <Route path="/inventory" element={<Inventory />} />
         <Route path="/coupon" element={<Coupon />} />
+        <Route path="/bank" element={<BankType />} />
         <Route path="/coupon-management" element={<CouponManagement />} />
         <Route path="/prompts" element={<PromptsList />} />
         <Route path="/prompts/create" element={<CreatePrompt />} />

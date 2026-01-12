@@ -227,9 +227,10 @@ const PromptsList = () => {
                     </td>
                     <td className="py-3 px-4 border border-gray-300">
                       <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-medium">
-                        {prompt.type || "documents"}
+                        {prompt.type || "documnets"}
                       </span>
                     </td>
+                    
                     <td className="py-3 px-4 border border-gray-300 text-gray-700">
                       {feature ? feature.feature || feature.name : prompt.feature_id || "--"}
                     </td>

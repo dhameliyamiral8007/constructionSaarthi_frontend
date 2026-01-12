@@ -37,7 +37,7 @@ const CreatePrompt = () => {
   const [formData, setFormData] = useState({
     title: "",
     prompt: "",
-    type: "documents",
+    type: "documnets",
     feature_id: "",
   });
 
@@ -275,7 +275,7 @@ const CreatePrompt = () => {
                   className="w-full border-2 border-gray-200 rounded-lg px-4 py-2.5 focus:outline-none focus:border-[#B02E0C] focus:ring-2 focus:ring-[#B02E0C]/20 transition-all"
                   required
                 >
-                  <option value="documents">Documents</option>
+                  <option value="documnets">documnets</option>
                   <option value="other">Other</option>
                 </select>
               </div>
@@ -481,7 +481,7 @@ const CreatePrompt = () => {
               setFormData({
                 title: "",
                 prompt: "",
-                type: "documents",
+                type: "documnets",
                 feature_id: "",
               });
               setVariables([{ name: "", promptReferenceId: "" }]);
