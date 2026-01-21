@@ -29,21 +29,21 @@ export const MenuItems = [
     link: "/subscriptions",
     icon: <CreditCard size={22} />,
   },
-  {
-    name: "Projects",
-    link: "/projects",
-    icon: <FolderOpen size={22} />,
-  },
-  {
-    name: "Reports",
-    link: "/reports",
-    icon: <BarChart3 size={22} />,
-  },
-  {
-    name: "Teams & Roles",
-    link: "/teams",
-    icon: <Users2 size={22} />,
-  },
+  // {
+  //   name: "Projects",
+  //   link: "/projects",
+  //   icon: <FolderOpen size={22} />,
+  // },
+  // {
+  //   name: "Reports",
+  //   link: "/reports",
+  //   icon: <BarChart3 size={22} />,
+  // },
+  // {
+  //   name: "Teams & Roles",
+  //   link: "/teams",
+  //   icon: <Users2 size={22} />,
+  // },
   {
     name: "Coupon Management",
     link: "/coupon-management",
@@ -54,16 +54,16 @@ export const MenuItems = [
     link: "/prompts",
     icon: <MessageCircle size={22} />,
   },
-  {
-    name: "Support Logs",
-    link: "/support",
-    icon: <LifeBuoy size={22} />,
-  },
+  // {
+  //   name: "Support Logs",
+  //   link: "/support",
+  //   icon: <LifeBuoy size={22} />,
+  // },
 
   // 🔽 DROPDOWN — FIXED
   {
     name: "Roles & Permissions",
-    icon: <Apple size={22} />,
+    icon: <Users2 size={22} />,
     submenu: [
       {
         name: "Roles",
@@ -121,20 +121,20 @@ export const MenuItems = [
     ],
   },
 
-  {
-    name: "General",
-    icon: <Settings size={22} />,
-    submenu: [
-      {
-        name: "Settings",
-        link: "/dashboard/settings",
-        icon: <Settings size={18} />,
-      },
-      {
-        name: "Help",
-        link: "/dashboard/help",
-        icon: <HelpCircle size={18} />,
-      }
-    ],
-  },
+  // {
+  //   name: "General",
+  //   icon: <Settings size={22} />,
+  //   submenu: [
+  //     {
+  //       name: "Settings",
+  //       link: "/dashboard/settings",
+  //       icon: <Settings size={18} />,
+  //     },
+  //     {
+  //       name: "Help",
+  //       link: "/dashboard/help",
+  //       icon: <HelpCircle size={18} />,
+  //     }
+  //   ],
+  // },
 ];

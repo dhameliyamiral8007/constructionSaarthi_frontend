@@ -1,21 +1,122 @@
-import { useState } from "react";
-import { TrendingUp, Users, MoreHorizontal, Eye } from "lucide-react";
+import { useState, useEffect } from "react";
+import { TrendingUp, Users, MoreHorizontal, Eye, Loader2 } from "lucide-react";
+import { apiInstance } from "../../../config/axiosInstance";
 import SubscriptionTreds from "./SubscriptionTreds";
 
 export const Dashboard = () => {
+  const [dashboardData, setDashboardData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  const fetchDashboardData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await apiInstance.get("/api/dashboard");
+      if (response.data.success && response.data.data) {
+        setDashboardData(response.data.data);
+      } else {
+        setError(response.data.message || "Failed to fetch dashboard data");
+      }
+    } catch (err) {
+      console.error("Error fetching dashboard data:", err);
+      setError(err.response?.data?.message || "Failed to fetch dashboard data");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Format value based on type
+  const formatValue = (stat) => {
+    if (stat.currency && stat.unit) {
+      // For revenue: ₹0.24L
+      return `${stat.currency}${stat.value}${stat.unit}`;
+    }
+    // For other stats: 76, 29, etc.
+    return stat.value?.toLocaleString() || "0";
+  };
+
+  // Format change percentage
+  const formatChange = (change, changeType) => {
+    const sign = changeType === "increase" ? "+" : "-";
+    return `${sign}${change.toFixed(1)}%`;
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="animate-spin text-[#B02E0C]" size={32} />
+        <span className="ml-3 text-gray-600">Loading dashboard...</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+        <p className="text-red-700">Error: {error}</p>
+        <button
+          onClick={fetchDashboardData}
+          className="mt-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Stats Grid */}
       <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-5 gap-5">
-        <StatCard title="Total App Users" value="2,267" change="+12.5%" trend="up" />
-        <StatCard title="Monthly Revenue" value="₹2.67L" change="+8.1%" trend="up" />
-        <StatCard title="Total Subscriptions" value="1,294" change="-2.3%" trend="down" />
-        <StatCard title="Active Plans" value="1,080" change="+4.3%" trend="up" />
-        <StatCard title="Trial Users" value="102" change="+4.3%" trend="up" />
+        {dashboardData?.totalAppUsers && (
+          <StatCard
+            title={dashboardData.totalAppUsers.label}
+            value={formatValue(dashboardData.totalAppUsers)}
+            change={formatChange(dashboardData.totalAppUsers.change, dashboardData.totalAppUsers.changeType)}
+            trend={dashboardData.totalAppUsers.changeType === "increase" ? "up" : "down"}
+          />
+        )}
+        {dashboardData?.monthlyRevenue && (
+          <StatCard
+            title={dashboardData.monthlyRevenue.label}
+            value={formatValue(dashboardData.monthlyRevenue)}
+            change={formatChange(dashboardData.monthlyRevenue.change, dashboardData.monthlyRevenue.changeType)}
+            trend={dashboardData.monthlyRevenue.changeType === "increase" ? "up" : "down"}
+          />
+        )}
+        {dashboardData?.totalSubscriptions && (
+          <StatCard
+            title={dashboardData.totalSubscriptions.label}
+            value={formatValue(dashboardData.totalSubscriptions)}
+            change={formatChange(dashboardData.totalSubscriptions.change, dashboardData.totalSubscriptions.changeType)}
+            trend={dashboardData.totalSubscriptions.changeType === "increase" ? "up" : "down"}
+          />
+        )}
+        {dashboardData?.activePlans && (
+          <StatCard
+            title={dashboardData.activePlans.label}
+            value={formatValue(dashboardData.activePlans)}
+            change={formatChange(dashboardData.activePlans.change, dashboardData.activePlans.changeType)}
+            trend={dashboardData.activePlans.changeType === "increase" ? "up" : "down"}
+          />
+        )}
+        {dashboardData?.trialUsers && (
+          <StatCard
+            title={dashboardData.trialUsers.label}
+            value={formatValue(dashboardData.trialUsers)}
+            change={formatChange(dashboardData.trialUsers.change, dashboardData.trialUsers.changeType)}
+            trend={dashboardData.trialUsers.changeType === "increase" ? "up" : "down"}
+          />
+        )}
       </div>
 
       {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
           <div className="flex justify-between items-center mb-6">
             <h3 className="text-lg font-semibold">Subscriptions Trends</h3>
@@ -47,10 +148,10 @@ export const Dashboard = () => {
         </div>
       </div>
 
-      <SubscriptionTreds />
+      <SubscriptionTreds /> */}
 
       {/* Recent Projects Table */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+      {/* <div className="bg-white rounded-xl shadow-sm border border-gray-200">
         <div className="p-6 border-b border-gray-200">
           <h3 className="text-lg font-semibold">Recent Projects</h3>
         </div>
@@ -73,7 +174,7 @@ export const Dashboard = () => {
             </tbody>
           </table>
         </div>
-      </div>
+      </div> */}
     </div>
   );
 };
