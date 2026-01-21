@@ -19,8 +19,8 @@ const CouponManagement = () => {
   const [showOpenModal, setShowOpenModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [selectedUser, setSelectedUser] = useState(null);
-  
+  const [selectedCoupon, setSelectedCoupon] = useState(null);
+
   // Coupon Criteria state
   const [showCriteriaModal, setShowCriteriaModal] = useState(false);
   const [criteria, setCriteria] = useState([]);
@@ -31,7 +31,7 @@ const CouponManagement = () => {
   const [showEditCriteriaModal, setShowEditCriteriaModal] = useState(false);
   const [selectedCriteria, setSelectedCriteria] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
-  
+
   // Form state for criteria
   const [criteriaFormData, setCriteriaFormData] = useState({
     attach_phone: false,
@@ -44,6 +44,29 @@ const CouponManagement = () => {
     need_map_existing_user: false,
     need_map_upcoming_user: false,
   });
+
+  // Coupon form state
+  const [couponFormData, setCouponFormData] = useState({
+    code: "",
+    title: "",
+    description: "",
+    status: true,
+    start_date: "",
+    end_date: "",
+    subscription_id: [],
+    global_usage_limit: "",
+    can_combine_with_referral_credit: true,
+    coupon_type_id: 1,
+    financial_value: "",
+    CouponTypeCriteriaId: "",
+  });
+
+  const [plans, setPlans] = useState([]);
+  const [coupons, setCoupons] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [loadingCoupons, setLoadingCoupons] = useState(false);
+  const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(null);
 
   const couponmanagement = [
     {
@@ -78,6 +101,40 @@ const CouponManagement = () => {
     //   createdAt: "903-759-6505",
     // },
   ];
+
+  // Fetch Coupons
+  const fetchCoupons = async () => {
+    setLoadingCoupons(true);
+    try {
+      const response = await apiInstance.get("/api/coupon/all");
+      if (response.data.success || response.data.message === "Coupons retrieved successfully") {
+        setCoupons(response.data.data || []);
+      }
+    } catch (err) {
+      console.error("Error fetching coupons:", err);
+      setError("Failed to fetch coupons");
+    } finally {
+      setLoadingCoupons(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCoupons();
+    fetchPlans();
+    fetchCriteria();
+  }, []);
+
+  // Fetch subscription plans
+  const fetchPlans = async () => {
+    try {
+      const response = await apiInstance.get(`/api/subscription/getSubscriptionPlans`);
+      if (response.data.success) {
+        setPlans(response.data.data || []);
+      }
+    } catch (err) {
+      console.error("Error fetching plans:", err);
+    }
+  };
 
   // Fetch coupon criteria
   const fetchCriteria = async () => {
@@ -230,6 +287,135 @@ const CouponManagement = () => {
     });
   };
 
+  // Handle coupon input change
+  const handleCouponInputChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setCouponFormData((prev) => ({
+      ...prev,
+      [name]: type === "checkbox" ? checked :
+        type === "number" ? Number(value) : value,
+    }));
+  };
+
+  // Handle subscription multi-select
+  const handleSubscriptionChange = (id) => {
+    setCouponFormData(prev => {
+      const current = prev.subscription_id;
+      if (current.includes(id)) {
+        return { ...prev, subscription_id: current.filter(i => i !== id) };
+      } else {
+        return { ...prev, subscription_id: [...current, id] };
+      }
+    });
+  };
+
+  // Reset coupon form
+  const resetCouponForm = () => {
+    setCouponFormData({
+      code: "",
+      title: "",
+      description: "",
+      status: true,
+      start_date: "",
+      end_date: "",
+      subscription_id: [],
+      global_usage_limit: "",
+      can_combine_with_referral_credit: true,
+      coupon_type_id: 1,
+      financial_value: "",
+      CouponTypeCriteriaId: "",
+    });
+  };
+
+  // Handle create coupon
+  const handleCreateCoupon = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      // Note: Assuming endpoint based on patterns. You might need to adjust this.
+      const response = await apiInstance.post("/api/coupon/create", couponFormData);
+
+      if (response.status === 200 || response.status === 201 || response.data?.success) {
+        setSuccess("Coupon created successfully!");
+        setShowAddModal(false);
+        resetCouponForm();
+        fetchCoupons();
+        setTimeout(() => setSuccess(null), 3000);
+      } else {
+        setError(response.data?.message || "Failed to create coupon");
+      }
+    } catch (err) {
+      console.error("Error creating coupon:", err);
+      setError(err.response?.data?.message || "Failed to create coupon");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle update coupon
+  const handleUpdateCoupon = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const response = await apiInstance.put(`/api/coupon/update/${selectedCoupon.id}`, {
+        ...couponFormData,
+        couponId: selectedCoupon.id
+      });
+
+      if (response.status === 200 || response.status === 201 || response.data?.success) {
+        setSuccess("Coupon updated successfully!");
+        setShowEditModal(false);
+        setSelectedCoupon(null);
+        resetCouponForm();
+        fetchCoupons();
+        setTimeout(() => setSuccess(null), 3000);
+      } else {
+        setError(response.data?.message || "Failed to update coupon");
+      }
+    } catch (err) {
+      console.error("Error updating coupon:", err);
+      setError(err.response?.data?.message || "Failed to update coupon");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle edit coupon click
+  const handleEditCouponClick = (coupon) => {
+    setSelectedCoupon(coupon);
+    setCouponFormData({
+      code: coupon.code || "",
+      title: coupon.title || "",
+      description: coupon.description || "",
+      status: coupon.status,
+      start_date: coupon.start_date ? coupon.start_date.split('T')[0] : "",
+      end_date: coupon.end_date ? coupon.end_date.split('T')[0] : "",
+      subscription_id: coupon.subscription_mappings ? coupon.subscription_mappings.map(m => m.subscription_plan_id) : [],
+      global_usage_limit: coupon.tiering?.[0]?.tier_details?.[0]?.current_tiering_limit || "",
+      can_combine_with_referral_credit: coupon.can_combine_with_referral_credit,
+      coupon_type_id: coupon.coupon_type_id || 1,
+      financial_value: coupon.financial_value || "",
+      CouponTypeCriteriaId: String(
+        coupon.CouponTypeCriteriaId ||
+        coupon.coupon_type_criteria_id ||
+        coupon.coupon_criteria_id ||
+        coupon.criteria_id ||
+        coupon.coupon_type_criteria?.id ||
+        coupon.coupon_criteria?.id ||
+        ""
+      ),
+    });
+    fetchPlans();
+    fetchCriteria();
+    setShowEditModal(true);
+  };
+
   const Modal = ({ title, children, onClose }) => (
     <div className="fixed inset-0 flex items-center justify-center z-50 backdrop-blur-xs bg-black/50">
       <div className="bg-white rounded-xl w-[400px] p-6 relative">
@@ -261,7 +447,11 @@ const CouponManagement = () => {
         </div>
         <div className="flex gap-3">
           <button
-            onClick={() => setShowAddModal(true)}
+            onClick={() => {
+              setShowAddModal(true);
+              fetchPlans();
+              fetchCriteria();
+            }}
             className="mt-4 sm:mt-0 px-4 py-2 bg-[#B02E0C] text-white rounded-md hover:bg-[#8d270b]"
           >
             + Create New Coupon
@@ -278,11 +468,23 @@ const CouponManagement = () => {
         </div>
       </div>
 
+      {success && (
+        <div className="p-4 mb-4 text-sm text-green-700 bg-green-100 rounded-lg border border-green-200" role="alert">
+          <span className="font-medium">Success!</span> {success}
+        </div>
+      )}
+
+      {error && !showAddModal && (
+        <div className="p-4 mb-4 text-sm text-red-700 bg-red-100 rounded-lg border border-red-200" role="alert">
+          <span className="font-medium">Error!</span> {error}
+        </div>
+      )}
+
       <div className="bg-white shadow-sm border border-gray-200 mt-4 rounded-lg">
         <div className="w-full p-4 bg-white flex items-center justify-between">
           {/* Left Title */}
           <h2 className="text-md font-semibold">
-            Coupons <span className="text-gray-400 font-normal">- All</span>
+            Coupons <span className="text-gray-400 font-normal">- All ({coupons.length})</span>
           </h2>
 
           {/* Right Section */}
@@ -330,10 +532,10 @@ const CouponManagement = () => {
                 Coupon Code
               </th>
               <th className="py-3 px-4 border border-gray-300 text-gray-700 font-normal">
-                Discount Type
+                Title
               </th>
               <th className="py-3 px-4 border border-gray-300 text-gray-700 font-normal">
-                Discount Value
+                Financial Value
               </th>
               <th className="py-3 px-4 border border-gray-300 text-gray-700 font-normal">
                 Valid From
@@ -350,72 +552,85 @@ const CouponManagement = () => {
               <th className="py-3 px-4 border border-gray-300 text-gray-700 font-normal">
                 Status
               </th>
-              <th className="py-3 px-4 border border-gray-300 text-gray-700 font-normal">
-                Status
-              </th>
-              <th className="py-3 px-4 border border-gray-300 text-sm"></th>
+              <th className="py-3 px-4 border border-gray-300 text-sm">Actions</th>
             </tr>
           </thead>
           <tbody>
-            {couponmanagement.map((user) => (
-              <tr key={user.id}>
-                <td className="py-3 px-4 border border-gray-300">
-                  <input
-                    type="checkbox"
-                    className="form-checkbox text-[#B02E0C] rounded focus:ring-[#B02E0C]"
-                  />
-                </td>
-                <td className="py-2 px-4 border border-gray-300 text-[#060C12] font-semibold">
-                  {user.name}
-                </td>
-                <td className="py-2 px-4 border border-gray-300 text-gray-700">
-                  {user.discounttype}
-                </td>
-                <td className="py-2 px-4 border border-gray-300 text-gray-700">
-                  {user.discountvalue}
-                </td>
-                <td className="py-2 px-4 border border-gray-300 text-gray-700">
-                  {user.validfrom}
-                </td>
-                <td className="py-2 px-4 border border-gray-300 text-gray-700">
-                  {user.expirydate}
-                </td>
-                <td className="py-2 px-4 border border-gray-300 text-gray-700">
-                  {user.usagelimit}
-                </td>
-                <td className="py-2 px-4 border border-gray-300 text-gray-700">
-                  {user.usedcount}
-                </td>
-                <td className="py-2 px-4 border border-gray-300 text-gray-700">
-                  <div className="px-2.5 py-1.5 border-2 border-green-300 bg-green-100 rounded-full flex flex-row gap-1">
-                    {" "}
-                    <div className="rounded-full mt-[0.6rem] w-2 h-2 bg-[#04B440]"></div>
-                    <span className="text-[#04B440] font-semibold">
-                      {user.status}
-                    </span>
-                  </div>
-                </td>
-                <td className="py-2 px-4 border border-gray-300 text-gray-700">
-                  {/* Switch */}
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      className="sr-only peer"
-                      defaultChecked
-                    />
-                    <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:bg-[#B02E0C] transition-all"></div>
-                    <div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-all peer-checked:translate-x-5"></div>
-                  </label>
-                </td>
-                <td>
-                  <div className="flex flex-row gap-4 py-5.5 px-4 border-b border-gray-300 text-gray-700">
-                    <Eye className="w-5 h-5 text-gray-600 cursor-pointer" />
-                    <Pencil className="w-5 h-5 text-gray-600 cursor-pointer" />
-                    <Trash2 className="w-5 h-5 text-gray-600 cursor-pointer" />
+            {loadingCoupons ? (
+              <tr>
+                <td colSpan="10" className="py-8 text-center">
+                  <div className="flex justify-center">
+                    <Loader2 className="animate-spin text-[#B02E0C]" size={32} />
                   </div>
                 </td>
               </tr>
-            ))}
+            ) : coupons.length === 0 ? (
+              <tr>
+                <td colSpan="10" className="py-8 text-center text-gray-500">
+                  No coupons found.
+                </td>
+              </tr>
+            ) : (
+              coupons.map((coupon) => {
+                const tier = coupon.tiering?.[0];
+                const tierDetail = tier?.tier_details?.[0];
+                return (
+                  <tr key={coupon.id}>
+                    <td className="py-3 px-4 border border-gray-300">
+                      <input
+                        type="checkbox"
+                        className="form-checkbox text-[#B02E0C] rounded focus:ring-[#B02E0C]"
+                      />
+                    </td>
+                    <td className="py-2 px-4 border border-gray-300 text-[#060C12] font-semibold">
+                      {coupon.code}
+                    </td>
+                    <td className="py-2 px-4 border border-gray-300 text-gray-700">
+                      {coupon.title}
+                    </td>
+                    <td className="py-2 px-4 border border-gray-300 text-gray-700">
+                      {coupon.financial_value}
+                    </td>
+                    <td className="py-2 px-4 border border-gray-300 text-gray-700">
+                      {coupon.start_date ? new Date(coupon.start_date).toLocaleDateString() : "-"}
+                    </td>
+                    <td className="py-2 px-4 border border-gray-300 text-gray-700">
+                      {coupon.end_date ? new Date(coupon.end_date).toLocaleDateString() : "-"}
+                    </td>
+                    <td className="py-2 px-4 border border-gray-300 text-gray-700">
+                      {tierDetail?.current_tiering_limit || "-"}
+                    </td>
+                    <td className="py-2 px-4 border border-gray-300 text-gray-700">
+                      {tier?.used_total || 0}
+                    </td>
+                    <td className="py-2 px-4 border border-gray-300">
+                      <div className={`px-2.5 py-1 middle none center rounded-full border ${coupon.status ? 'border-green-300 bg-green-100' : 'border-red-300 bg-red-100'} flex items-center gap-1 w-fit`}>
+                        <div className={`rounded-full w-2 h-2 ${coupon.status ? 'bg-[#04B440]' : 'bg-red-500'}`}></div>
+                        <span className={`${coupon.status ? 'text-[#04B440]' : 'text-red-500'} font-semibold text-xs`}>
+                          {coupon.status ? 'Active' : 'Inactive'}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="py-2 px-4 border border-gray-300 text-gray-700">
+                      <div className="flex flex-row gap-4">
+                        <Eye
+                          className="w-5 h-5 text-gray-600 cursor-pointer hover:text-[#B02E0C]"
+                          onClick={() => {
+                            setSelectedCoupon(coupon);
+                            setShowOpenModal(true);
+                          }}
+                        />
+                        <Pencil
+                          className="w-5 h-5 text-gray-600 cursor-pointer hover:text-[#B02E0C]"
+                          onClick={() => handleEditCouponClick(coupon)}
+                        />
+                        <Trash2 className="w-5 h-5 text-gray-600 cursor-pointer hover:text-red-500" />
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })
+            )}
           </tbody>
         </table>
       </div>
@@ -525,11 +740,10 @@ const CouponManagement = () => {
                               {item.need_map_upcoming_user ? "Yes" : "No"}
                             </td>
                             <td className="py-3 px-4 border border-gray-300">
-                              <span className={`px-2 py-1 rounded text-xs font-semibold ${
-                                item.is_active
-                                  ? 'bg-green-100 text-green-700'
-                                  : 'bg-red-100 text-red-700'
-                              }`}>
+                              <span className={`px-2 py-1 rounded text-xs font-semibold ${item.is_active
+                                ? 'bg-green-100 text-green-700'
+                                : 'bg-red-100 text-red-700'
+                                }`}>
                                 {item.is_active ? 'Active' : 'Inactive'}
                               </span>
                             </td>
@@ -869,6 +1083,577 @@ const CouponManagement = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Create New Coupon Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 backdrop-blur-xs bg-black/50 overflow-y-auto">
+          <div className="bg-white rounded-xl w-[90%] max-w-lg p-6 relative my-8">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold">Create New Coupon</h2>
+              <button
+                onClick={() => {
+                  setShowAddModal(false);
+                  resetCouponForm();
+                  setError(null);
+                }}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            {error && (
+              <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-md">
+                {error}
+              </div>
+            )}
+
+            <form onSubmit={handleCreateCoupon} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Coupon Code
+                  </label>
+                  <input
+                    type="text"
+                    name="code"
+                    value={couponFormData.code}
+                    onChange={handleCouponInputChange}
+                    placeholder="e.g. 1265"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-[#B02E0C]"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Title
+                  </label>
+                  <input
+                    type="text"
+                    name="title"
+                    value={couponFormData.title}
+                    onChange={handleCouponInputChange}
+                    placeholder="e.g. For Existing User"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-[#B02E0C]"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700">
+                  Description
+                </label>
+                <textarea
+                  name="description"
+                  value={couponFormData.description}
+                  onChange={handleCouponInputChange}
+                  rows="2"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-[#B02E0C]"
+                ></textarea>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Start Date
+                  </label>
+                  <input
+                    type="date"
+                    name="start_date"
+                    value={couponFormData.start_date}
+                    onChange={handleCouponInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-[#B02E0C]"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    End Date
+                  </label>
+                  <input
+                    type="date"
+                    name="end_date"
+                    value={couponFormData.end_date}
+                    onChange={handleCouponInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-[#B02E0C]"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Coupon Type ID
+                  </label>
+                  <input
+                    type="number"
+                    name="coupon_type_id"
+                    value={couponFormData.coupon_type_id}
+                    onChange={handleCouponInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-[#B02E0C]"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Financial Value
+                  </label>
+                  <input
+                    type="number"
+                    name="financial_value"
+                    value={couponFormData.financial_value}
+                    onChange={handleCouponInputChange}
+                    placeholder="e.g. 120"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-[#B02E0C]"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Global Usage Limit
+                  </label>
+                  <input
+                    type="number"
+                    name="global_usage_limit"
+                    value={couponFormData.global_usage_limit}
+                    onChange={handleCouponInputChange}
+                    placeholder="e.g. 10"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-[#B02E0C]"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Criteria ID
+                  </label>
+                  <select
+                    name="CouponTypeCriteriaId"
+                    value={couponFormData.CouponTypeCriteriaId}
+                    onChange={handleCouponInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-[#B02E0C]"
+                    required
+                  >
+                    <option value="">Select Criteria</option>
+                    {criteria.map((c) => {
+                      const critId = c.id || c.coupon_type_criteria_id;
+                      return (
+                        <option key={critId} value={String(critId)}>
+                          Criteria #{critId}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700">
+                  Select Subscriptions
+                </label>
+                <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto p-2 border border-gray-200 rounded-md">
+                  {plans.map((plan) => (
+                    <label key={plan.id} className="flex items-center gap-2 cursor-pointer text-sm">
+                      <input
+                        type="checkbox"
+                        checked={(couponFormData.subscription_id || []).some(id => String(id) === String(plan.id))}
+                        onChange={() => handleSubscriptionChange(plan.id)}
+                        className="w-4 h-4"
+                        style={{ accentColor: '#B02E0C' }}
+                      />
+                      <span>{plan.name || `Plan #${plan.id}`}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 pt-2">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    name="status"
+                    checked={couponFormData.status}
+                    onChange={handleCouponInputChange}
+                    className="w-4 h-4"
+                    style={{ accentColor: '#B02E0C' }}
+                  />
+                  <span className="text-sm font-medium text-gray-700">Internal Status (Active)</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    name="can_combine_with_referral_credit"
+                    checked={couponFormData.can_combine_with_referral_credit}
+                    onChange={handleCouponInputChange}
+                    className="w-4 h-4"
+                    style={{ accentColor: '#B02E0C' }}
+                  />
+                  <span className="text-sm font-medium text-gray-700">Can Combine with Referral</span>
+                </label>
+              </div>
+
+              <div className="flex justify-end gap-3 mt-6">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAddModal(false);
+                    resetCouponForm();
+                    setError(null);
+                  }}
+                  className="px-4 py-2 rounded-md border border-gray-300 hover:bg-gray-100 cursor-pointer text-sm font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="px-4 py-2 rounded-md bg-[#B02E0C] text-white hover:bg-[#8d270b] cursor-pointer text-sm font-medium flex items-center gap-2"
+                >
+                  {loading && <Loader2 size={16} className="animate-spin" />}
+                  {loading ? "Creating..." : "Create Coupon"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* Update Coupon Modal */}
+      {showEditModal && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 backdrop-blur-xs bg-black/50 overflow-y-auto">
+          <div className="bg-white rounded-xl w-[90%] max-w-lg p-6 relative my-8">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold">Update Coupon</h2>
+              <button
+                onClick={() => {
+                  setShowEditModal(false);
+                  setSelectedCoupon(null);
+                  resetCouponForm();
+                  setError(null);
+                }}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            {error && (
+              <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-md">
+                {error}
+              </div>
+            )}
+
+            <form onSubmit={handleUpdateCoupon} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Coupon Code
+                  </label>
+                  <input
+                    type="text"
+                    name="code"
+                    value={couponFormData.code}
+                    onChange={handleCouponInputChange}
+                    placeholder="e.g. 1265"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-[#B02E0C]"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Title
+                  </label>
+                  <input
+                    type="text"
+                    name="title"
+                    value={couponFormData.title}
+                    onChange={handleCouponInputChange}
+                    placeholder="e.g. For Existing User"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-[#B02E0C]"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700">
+                  Description
+                </label>
+                <textarea
+                  name="description"
+                  value={couponFormData.description}
+                  onChange={handleCouponInputChange}
+                  rows="2"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-[#B02E0C]"
+                ></textarea>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Start Date
+                  </label>
+                  <input
+                    type="date"
+                    name="start_date"
+                    value={couponFormData.start_date}
+                    onChange={handleCouponInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-[#B02E0C]"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    End Date
+                  </label>
+                  <input
+                    type="date"
+                    name="end_date"
+                    value={couponFormData.end_date}
+                    onChange={handleCouponInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-[#B02E0C]"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Financial Value
+                  </label>
+                  <input
+                    type="number"
+                    name="financial_value"
+                    value={couponFormData.financial_value}
+                    onChange={handleCouponInputChange}
+                    placeholder="e.g. 50"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-[#B02E0C]"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Global Usage Limit
+                  </label>
+                  <input
+                    type="number"
+                    name="global_usage_limit"
+                    value={couponFormData.global_usage_limit}
+                    onChange={handleCouponInputChange}
+                    placeholder="e.g. 100"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-[#B02E0C]"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700">
+                  Select Subscriptions (Multi-select)
+                </label>
+                <div className="flex flex-wrap gap-2 p-2 border border-gray-300 rounded-md max-h-32 overflow-y-auto">
+                  {plans.map((plan) => (
+                    <button
+                      key={plan.id}
+                      type="button"
+                      onClick={() => handleSubscriptionChange(plan.id)}
+                      className={`px-3 py-1 text-xs rounded-full border transition-colors ${(couponFormData.subscription_id || []).some(id => String(id) === String(plan.id))
+                        ? "bg-[#B02E0C] text-white border-[#B02E0C]"
+                        : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+                        }`}
+                    >
+                      {plan.name || `Plan #${plan.id}`}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700">
+                  Coupon Criteria
+                </label>
+                <select
+                  name="CouponTypeCriteriaId"
+                  value={String(couponFormData.CouponTypeCriteriaId || "")}
+                  onChange={handleCouponInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-[#B02E0C]"
+                  required
+                >
+                  <option value="">Select Criteria</option>
+                  {criteria.map((c) => {
+                    const critId = c.id || c.coupon_type_criteria_id;
+                    return (
+                      <option key={critId} value={String(critId)}>
+                        Criteria #{critId}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 pt-2">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    name="status"
+                    checked={couponFormData.status}
+                    onChange={handleCouponInputChange}
+                    className="w-4 h-4"
+                    style={{ accentColor: '#B02E0C' }}
+                  />
+                  <span className="text-sm font-medium text-gray-700">Internal Status (Active)</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    name="can_combine_with_referral_credit"
+                    checked={couponFormData.can_combine_with_referral_credit}
+                    onChange={handleCouponInputChange}
+                    className="w-4 h-4"
+                    style={{ accentColor: '#B02E0C' }}
+                  />
+                  <span className="text-sm font-medium text-gray-700">Can Combine with Referral</span>
+                </label>
+              </div>
+
+              <div className="flex justify-end gap-3 mt-6">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEditModal(false);
+                    setSelectedCoupon(null);
+                    resetCouponForm();
+                    setError(null);
+                  }}
+                  className="px-4 py-2 rounded-md border border-gray-300 hover:bg-gray-100 cursor-pointer text-sm font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="px-4 py-2 rounded-md bg-[#B02E0C] text-white hover:bg-[#8d270b] cursor-pointer text-sm font-medium flex items-center gap-2"
+                >
+                  {loading && <Loader2 size={16} className="animate-spin" />}
+                  {loading ? "Updating..." : "Update Coupon"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {showOpenModal && selectedCoupon && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 backdrop-blur-xs bg-black/50 overflow-y-auto">
+          <div className="bg-white rounded-xl w-[90%] max-w-2xl p-6 relative my-8">
+            <div className="flex justify-between items-center mb-6 border-b pb-4">
+              <h2 className="text-2xl font-bold text-gray-900">Coupon Details</h2>
+              <button
+                onClick={() => {
+                  setShowOpenModal(false);
+                  setSelectedCoupon(null);
+                }}
+                className="text-gray-500 hover:text-gray-700 p-1 hover:bg-gray-100 rounded-full transition-colors"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-x-8 gap-y-6">
+              <div className="space-y-1">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Coupon Code</p>
+                <p className="text-lg font-bold text-[#B02E0C]">{selectedCoupon.code}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Title</p>
+                <p className="text-base text-gray-900 font-medium">{selectedCoupon.title || "N/A"}</p>
+              </div>
+
+              <div className="col-span-2 space-y-1">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Description</p>
+                <p className="text-base text-gray-700 leading-relaxed bg-gray-50 p-3 rounded-lg border border-gray-100">
+                  {selectedCoupon.description || "No description provided."}
+                </p>
+              </div>
+
+              <div className="space-y-1">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Financial Value</p>
+                <p className="text-base font-bold text-gray-900">{selectedCoupon.financial_value}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</p>
+                <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${selectedCoupon.status ? 'bg-green-100 text-green-700 border-green-200' : 'bg-red-100 text-red-700 border-red-200'
+                  }`}>
+                  {selectedCoupon.status ? 'Active' : 'Inactive'}
+                </span>
+              </div>
+
+              <div className="space-y-1">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Start Date</p>
+                <p className="text-base text-gray-900">{selectedCoupon.start_date ? new Date(selectedCoupon.start_date).toLocaleDateString(undefined, { dateStyle: 'long' }) : "N/A"}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">End Date</p>
+                <p className="text-base text-gray-900">{selectedCoupon.end_date ? new Date(selectedCoupon.end_date).toLocaleDateString(undefined, { dateStyle: 'long' }) : "N/A"}</p>
+              </div>
+
+              <div className="space-y-1">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Usage Limit</p>
+                <p className="text-base text-gray-900 font-medium">
+                  {selectedCoupon.tiering?.[0]?.tier_details?.[0]?.current_tiering_limit || "Unlimited"}
+                </p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Used Count</p>
+                <p className="text-base text-gray-900 font-medium">{selectedCoupon.tiering?.[0]?.used_total || 0}</p>
+              </div>
+
+              <div className="col-span-2 space-y-3">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Assigned Subscriptions</p>
+                <div className="flex flex-wrap gap-2">
+                  {selectedCoupon.subscription_mappings && selectedCoupon.subscription_mappings.length > 0 ? (
+                    selectedCoupon.subscription_mappings.map((mapping, idx) => {
+                      const mappingPlanId = mapping.subscription_plan_id || mapping.SubscriptionPlanId || mapping.subscriptionPlanId;
+                      const plan = plans.find(p => String(p.id) === String(mappingPlanId));
+                      return (
+                        <span key={idx} className="bg-gray-100 text-[#B02E0C] px-3 py-1.5 rounded-md text-sm font-semibold border border-gray-200">
+                          {plan ? plan.name : `Plan ID: ${mappingPlanId}`}
+                        </span>
+                      );
+                    })
+                  ) : (
+                    <span className="text-sm text-gray-500 italic">No specific plans assigned (Global Coupon).</span>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Can Combine with Referral</p>
+                <p className="text-base text-gray-900 font-medium">{selectedCoupon.can_combine_with_referral_credit ? "Yes" : "No"}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Created At</p>
+                <p className="text-sm text-gray-900">{new Date(selectedCoupon.createdAt).toLocaleString()}</p>
+              </div>
+            </div>
+
+            <div className="mt-8 pt-6 border-t flex justify-end">
+              <button
+                onClick={() => {
+                  setShowOpenModal(false);
+                  setSelectedCoupon(null);
+                }}
+                className="px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-black transition-colors font-medium cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useLocation } from "react-router-dom";
 import { EllipsisVertical, Eye, Edit, Trash2, Loader2, Plus, X } from "lucide-react";
@@ -15,6 +15,7 @@ const PromptsList = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
+  const menuRef = useRef(null);
 
   // Redux state
   const { prompts, loading, error } = useSelector((state) => state.prompt);
@@ -43,6 +44,27 @@ const PromptsList = () => {
       })
     );
   }, [dispatch, selectedFeature]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        // Check if click is not on the ellipsis button
+        const isEllipsisButton = event.target.closest('button[class*="p-2"]');
+        if (!isEllipsisButton) {
+          setOpenMenuId(null);
+        }
+      }
+    };
+
+    if (openMenuId) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [openMenuId]);
 
   // Handle delete
   const handleDelete = async () => {
@@ -173,7 +195,7 @@ const PromptsList = () => {
       )}
 
       {/* Prompts Table */}
-      <div className="bg-white shadow-sm border border-gray-200 rounded-lg overflow-hidden">
+      <div className="bg-white shadow-sm border border-gray-200 rounded-lg overflow-visible">
         {loading ? (
           <div className="flex justify-center items-center py-12">
             <Loader2 className="animate-spin text-[#B02E0C]" size={32} />
@@ -221,7 +243,7 @@ const PromptsList = () => {
                       <div>
                         <p className="font-medium text-gray-800">{prompt.title}</p>
                         <p className="text-xs text-gray-500 mt-1 line-clamp-2">
-                          {prompt.prompt?.substring(0, 100)}...
+                          {typeof prompt.prompt === 'string' ? (prompt.prompt.length > 100 ? prompt.prompt.substring(0, 100) + '...' : prompt.prompt) : ''}
                         </p>
                       </div>
                     </td>
@@ -255,24 +277,38 @@ const PromptsList = () => {
                         )}
                       </div>
                     </td>
-                    <td className="py-3 px-4 border border-gray-300 text-center relative">
+                    <td className="py-3 px-4 border border-gray-300 text-center relative" ref={openMenuId === prompt.prompt_id ? menuRef : null}>
                       <button
-                        onClick={() =>
+                        onClick={(e) => {
+                          e.stopPropagation();
                           setOpenMenuId(
                             openMenuId === prompt.prompt_id ? null : prompt.prompt_id
-                          )
-                        }
-                        className="p-2 rounded hover:bg-gray-100"
+                          );
+                        }}
+                        className="p-2 rounded hover:bg-gray-100 relative z-10"
                       >
                         <EllipsisVertical className="text-gray-600" />
                       </button>
 
                       {/* Dropdown Menu */}
                       {openMenuId === prompt.prompt_id && (
-                        <div className="absolute right-4 top-10 bg-white border border-gray-200 shadow-lg rounded-md w-44 z-30">
+                        <div 
+                          className="absolute right-0 top-full mt-1 bg-white border border-gray-200 shadow-lg rounded-md w-44 z-50"
+                          onClick={(e) => e.stopPropagation()}
+                          style={{ 
+                            // For last row, position upward if needed
+                            ...(prompts.indexOf(prompt) === prompts.length - 1 ? {
+                              bottom: '100%',
+                              top: 'auto',
+                              marginTop: 0,
+                              marginBottom: '4px'
+                            } : {})
+                          }}
+                        >
                           <ul className="text-gray-700 text-sm">
                             <li
-                              onClick={() => {
+                              onClick={(e) => {
+                                e.stopPropagation();
                                 navigate(`/prompts/view/${prompt.prompt_id}`);
                                 setOpenMenuId(null);
                               }}
@@ -281,7 +317,8 @@ const PromptsList = () => {
                               <Eye size={16} /> View
                             </li>
                             <li
-                              onClick={() => {
+                              onClick={(e) => {
+                                e.stopPropagation();
                                 navigate(`/prompts/edit/${prompt.prompt_id}`);
                                 setOpenMenuId(null);
                               }}
@@ -290,7 +327,8 @@ const PromptsList = () => {
                               <Edit size={16} /> Edit
                             </li>
                             <li
-                              onClick={() => {
+                              onClick={(e) => {
+                                e.stopPropagation();
                                 setSelectedPrompt(prompt);
                                 setShowDeleteModal(true);
                                 setOpenMenuId(null);

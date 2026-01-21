@@ -50,6 +50,8 @@ const Navigation = () => (
         <Route path="/coupon-management" element={<CouponManagement />} />
         <Route path="/prompts" element={<PromptsList />} />
         <Route path="/prompts/create" element={<CreatePrompt />} />
+        <Route path="/prompts/edit/:id" element={<CreatePrompt />} />
+        <Route path="/prompts/view/:id" element={<CreatePrompt />} />
         <Route path="/prompts/features" element={<PMFeatureManagement />} />
         <Route path="/prompts/references" element={<PromptReferenceManagement />} />
       </Route>

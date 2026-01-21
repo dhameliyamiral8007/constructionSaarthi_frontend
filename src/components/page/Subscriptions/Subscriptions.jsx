@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { EllipsisVertical, Eye, Lock, Ban, X, EyeOff, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { apiInstance } from "../../../config/axiosInstance";
@@ -25,10 +25,35 @@ const Subscriptions = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [limit] = useState(10);
   const [pagination, setPagination] = useState({ total: 0, totalPages: 0 });
+  
+  // Ref for dropdown menu
+  const menuRefs = useRef({});
 
   const handleManagePlans = () => {
     navigate("/manage-plans");
   };
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      // Check if click is outside all dropdown menus
+      const clickedInsideAnyMenu = Object.values(menuRefs.current).some(ref => 
+        ref && ref.contains(event.target)
+      );
+      
+      if (!clickedInsideAnyMenu) {
+        setOpenMenuId(null);
+      }
+    };
+
+    if (openMenuId !== null) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [openMenuId]);
 
   // Fetch subscription plans for dropdown
   const fetchPlans = async () => {
@@ -337,31 +362,43 @@ const Subscriptions = () => {
                 <td className="py-2 px-4 border border-gray-300 text-gray-700">
                   {plan.billing_period ? `${plan.billing_period} days` : "--"}
                 </td>
-                <td className="py-2 px-4 border border-gray-300 text-center relative">
+                <td className="py-2 px-4 border border-gray-300 text-center relative" ref={(el) => {
+                  const uniqueId = `purchase-${purchase.order_id || purchase.id}`;
+                  if (el) {
+                    menuRefs.current[uniqueId] = el;
+                  }
+                }}>
                   <button
-                    onClick={() =>
-                      setOpenMenuId(openMenuId === user.id ? null : user.id)
-                    }
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const uniqueId = `purchase-${purchase.order_id || purchase.id}`;
+                      setOpenMenuId(openMenuId === uniqueId ? null : uniqueId);
+                    }}
                     className="p-2 rounded hover:bg-gray-100"
                   >
                     <EllipsisVertical className="text-gray-600" />
                   </button>
 
                   {/* Dropdown Menu */}
-                  {openMenuId === user.id && (
-                    <div className="absolute right-4 top-10 bg-white border border-gray-200 shadow-lg rounded-md w-44 z-30">
+                  {openMenuId === `purchase-${purchase.order_id || purchase.id}` && (
+                    <div 
+                      className="absolute right-4 top-10 bg-white border border-gray-200 shadow-lg rounded-md w-44 z-50"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <ul className="text-gray-700 text-sm">
-                        {/* <li className="px-4 py-2 flex items-center gap-2 hover:bg-gray-50 cursor-pointer">
-                          <Eye size={16} /> View Profile
-                        </li> */}
                         <li
-                          onClick={() => setSelectedUser(user)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedUser(user);
+                            setOpenMenuId(null);
+                          }}
                           className="px-4 py-2 flex items-center gap-2 hover:bg-gray-50 cursor-pointer"
                         >
                           <Eye size={16} /> View Profile
                         </li>
                         <li
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             setShowResetModal(true);
                             setOpenMenuId(null);
                           }}
@@ -370,7 +407,8 @@ const Subscriptions = () => {
                           <Lock size={16} /> Reset Password
                         </li>
                         <li
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             setShowSuspendModal(true);
                             setOpenMenuId(null);
                           }}
