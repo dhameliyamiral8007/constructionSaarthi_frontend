@@ -1,8 +1,10 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { MenuItems } from "./MenuItems";
-import { X, ChevronDown, ChevronRight } from "lucide-react";
+import { X, ChevronDown, ChevronRight, LogOut } from "lucide-react";
 import icon from "../../assets/icon.png";
 import { useState } from "react";
+import { useDispatch } from "react-redux";
+import { logout } from "../../redux/slice/AuthSlice";
 
 export const Sidebar = ({
   isOpen = false,
@@ -10,10 +12,18 @@ export const Sidebar = ({
   isCollapsed = false,
 }) => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
   const [openDropdown, setOpenDropdown] = useState(null);
 
   const toggleDropdown = (name) => {
     setOpenDropdown((prev) => (prev === name ? null : name));
+  };
+
+  const handleLogout = () => {
+    dispatch(logout());
+    localStorage.removeItem("token");
+    navigate("/");
   };
 
   const baseClasses =
@@ -129,6 +139,20 @@ export const Sidebar = ({
         <nav className="flex flex-col gap-1 flex-1 overflow-y-auto">
           {MenuItems.map(renderMenuItem)}
         </nav>
+
+        {/* Logout Button */}
+        <div className="border-t border-gray-200 p-3">
+          <button
+            onClick={handleLogout}
+            className={`w-full flex items-center gap-3 py-2 px-3 hover:bg-gray-100 rounded-lg text-red-600 transition-colors ${
+              isCollapsed ? "justify-center" : ""
+            }`}
+            title={isCollapsed ? "Logout" : ""}
+          >
+            <LogOut size={22} />
+            {!isCollapsed && <span className="font-medium">Logout</span>}
+          </button>
+        </div>
       </div>
 
       {isOpen && (
