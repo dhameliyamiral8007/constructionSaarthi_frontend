@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { X, Plus, Trash2, Loader2, ArrowLeft } from "lucide-react";
 import {
   createPrompt,
+  updatePrompt,
+  fetchPromptById,
   clearError,
 } from "../../../redux/slice/PromptSlice";
 import {
@@ -19,9 +21,12 @@ import {
 const CreatePrompt = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const { id } = useParams();
+  const isEditMode = Boolean(id);
+  const isViewMode = window.location.pathname.includes("/view/");
 
   // Redux state
-  const { loading: promptLoading, error: promptError } = useSelector(
+  const { loading: promptLoading, error: promptError, currentPrompt } = useSelector(
     (state) => state.prompt
   );
   const {
@@ -62,7 +67,92 @@ const CreatePrompt = () => {
   useEffect(() => {
     dispatch(fetchAllPromptReferences());
     dispatch(fetchAllPMFeatures());
-  }, [dispatch]);
+    
+    // Fetch prompt data if editing or viewing
+    if ((isEditMode || isViewMode) && id) {
+      dispatch(fetchPromptById(id));
+    }
+  }, [dispatch, id, isEditMode, isViewMode]);
+
+  // Populate form when prompt data is loaded
+  useEffect(() => {
+    if ((isEditMode || isViewMode) && currentPrompt) {
+      setFormData({
+        title: currentPrompt.title || "",
+        prompt: currentPrompt.prompt || "",
+        type: currentPrompt.type || "documnets",
+        feature_id: currentPrompt.feature_id ? String(currentPrompt.feature_id) : "",
+      });
+      
+      if (currentPrompt.variables && currentPrompt.variables.length > 0) {
+        // Map variables, handling both promptReferenceId and referenceName
+        const mappedVariables = currentPrompt.variables.map((v) => {
+          let promptReferenceId = "";
+          
+          // If promptReferenceId exists, use it
+          if (v.promptReferenceId) {
+            promptReferenceId = String(v.promptReferenceId);
+          } 
+          // If referenceName exists, find the matching reference by name
+          else if (v.referenceName && promptReferences && promptReferences.length > 0) {
+            const matchingRef = promptReferences.find(
+              (ref) => ref.name === v.referenceName || ref.name?.toLowerCase() === v.referenceName?.toLowerCase()
+            );
+            if (matchingRef && matchingRef.id) {
+              promptReferenceId = String(matchingRef.id);
+            }
+          }
+          
+          return {
+            name: v.name || "",
+            promptReferenceId: promptReferenceId,
+          };
+        });
+        
+        setVariables(mappedVariables);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPrompt, isEditMode, isViewMode]);
+  
+  // Update variables when promptReferences load (if they weren't available initially)
+  useEffect(() => {
+    if ((isEditMode || isViewMode) && currentPrompt && currentPrompt.variables && promptReferences && promptReferences.length > 0) {
+      // Check if any variable needs reference mapping
+      const needsMapping = currentPrompt.variables.some(
+        (v) => !v.promptReferenceId && v.referenceName
+      );
+      
+      if (needsMapping) {
+        const mappedVariables = currentPrompt.variables.map((v) => {
+          let promptReferenceId = "";
+          
+          // If promptReferenceId exists, use it
+          if (v.promptReferenceId) {
+            promptReferenceId = String(v.promptReferenceId);
+          } 
+          // If referenceName exists, find the matching reference by name
+          else if (v.referenceName) {
+            const matchingRef = promptReferences.find(
+              (ref) => ref.name === v.referenceName || ref.name?.toLowerCase() === v.referenceName?.toLowerCase()
+            );
+            if (matchingRef && matchingRef.id) {
+              promptReferenceId = String(matchingRef.id);
+            }
+          }
+          
+          return {
+            name: v.name || "",
+            promptReferenceId: promptReferenceId,
+          };
+        });
+        
+        setVariables(mappedVariables);
+      }
+    }
+    // Use length instead of array to avoid dependency array size changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [promptReferences?.length, currentPrompt, isEditMode, isViewMode]);
 
   // Handle form input change
   const handleInputChange = (e) => {
@@ -129,6 +219,10 @@ const CreatePrompt = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    if (isViewMode) {
+      return; // Don't submit in view mode
+    }
+
     // Validate form
     if (!formData.title || !formData.prompt || !formData.type) {
       toast.error("Please fill in all required fields");
@@ -152,22 +246,38 @@ const CreatePrompt = () => {
     }));
 
     try {
-      await dispatch(
-        createPrompt({
-          title: formData.title,
-          prompt: formData.prompt,
-          variables: variablesToSubmit,
-          type: formData.type,
-          feature_id: formData.feature_id ? parseInt(formData.feature_id) : null,
-        })
-      ).unwrap();
-
-      // Show success message and navigate
-      toast.success("Prompt created successfully!");
+      if (isEditMode) {
+        // Update prompt
+        await dispatch(
+          updatePrompt({
+            id: id,
+            updatedData: {
+              title: formData.title,
+              prompt: formData.prompt,
+              variables: variablesToSubmit,
+              type: formData.type,
+              feature_id: formData.feature_id ? parseInt(formData.feature_id) : null,
+            },
+          })
+        ).unwrap();
+        toast.success("Prompt updated successfully!");
+      } else {
+        // Create prompt
+        await dispatch(
+          createPrompt({
+            title: formData.title,
+            prompt: formData.prompt,
+            variables: variablesToSubmit,
+            type: formData.type,
+            feature_id: formData.feature_id ? parseInt(formData.feature_id) : null,
+          })
+        ).unwrap();
+        toast.success("Prompt created successfully!");
+      }
       navigate("/prompts");
     } catch (error) {
-      console.error("Failed to create prompt:", error);
-      toast.error(error || "Failed to create prompt");
+      console.error(`Failed to ${isEditMode ? "update" : "create"} prompt:`, error);
+      toast.error(error || `Failed to ${isEditMode ? "update" : "create"} prompt`);
     }
   };
 
@@ -182,9 +292,15 @@ const CreatePrompt = () => {
           >
             <ArrowLeft size={20} /> Back to Prompts
           </button>
-          <h1 className="text-2xl font-bold text-gray-900">Create Prompt</h1>
+          <h1 className="text-2xl font-bold text-gray-900">
+            {isViewMode ? "View Prompt" : isEditMode ? "Edit Prompt" : "Create Prompt"}
+          </h1>
           <p className="text-gray-600">
-            Create a new prompt with variables and feature mapping.
+            {isViewMode 
+              ? "View prompt details, variables, and feature mapping."
+              : isEditMode
+              ? "Edit prompt with variables and feature mapping."
+              : "Create a new prompt with variables and feature mapping."}
           </p>
         </div>
       </div>
@@ -204,6 +320,12 @@ const CreatePrompt = () => {
 
       {/* Form */}
       <form onSubmit={handleSubmit}>
+        {promptLoading && isEditMode && (
+          <div className="flex justify-center items-center py-12">
+            <Loader2 className="animate-spin text-[#B02E0C]" size={32} />
+            <span className="ml-3 text-gray-600">Loading prompt...</span>
+          </div>
+        )}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Column - Form Fields */}
           <div className="lg:col-span-2 space-y-6">
@@ -224,7 +346,8 @@ const CreatePrompt = () => {
                     name="feature_id"
                     value={formData.feature_id}
                     onChange={handleInputChange}
-                    className="flex-1 border-2 border-gray-200 rounded-lg px-4 py-2.5 focus:outline-none focus:border-[#B02E0C] focus:ring-2 focus:ring-[#B02E0C]/20 transition-all"
+                    disabled={isViewMode}
+                    className={`flex-1 border-2 border-gray-200 rounded-lg px-4 py-2.5 focus:outline-none focus:border-[#B02E0C] focus:ring-2 focus:ring-[#B02E0C]/20 transition-all ${isViewMode ? "bg-gray-100 cursor-not-allowed" : ""}`}
                   >
                     <option value="">Select Feature</option>
                     {featureLoading ? (
@@ -237,13 +360,15 @@ const CreatePrompt = () => {
                       ))
                     )}
                   </select>
-                  <button
-                    type="button"
-                    onClick={() => setShowNewFeatureModal(true)}
-                    className="px-4 py-2 bg-gradient-to-r from-gray-100 to-gray-50 text-gray-700 rounded-lg hover:from-gray-200 hover:to-gray-100 border border-gray-200 flex items-center gap-2 font-medium transition-all"
-                  >
-                    <Plus size={18} /> NEW
-                  </button>
+                  {!isViewMode && (
+                    <button
+                      type="button"
+                      onClick={() => setShowNewFeatureModal(true)}
+                      className="px-4 py-2 bg-gradient-to-r from-gray-100 to-gray-50 text-gray-700 rounded-lg hover:from-gray-200 hover:to-gray-100 border border-gray-200 flex items-center gap-2 font-medium transition-all"
+                    >
+                      <Plus size={18} /> NEW
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -258,7 +383,9 @@ const CreatePrompt = () => {
                   value={formData.title}
                   onChange={handleInputChange}
                   placeholder="e.g., Builder Project Proposal"
-                  className="w-full border-2 border-gray-200 rounded-lg px-4 py-2.5 focus:outline-none focus:border-[#B02E0C] focus:ring-2 focus:ring-[#B02E0C]/20 transition-all"
+                  disabled={isViewMode}
+                  readOnly={isViewMode}
+                  className={`w-full border-2 border-gray-200 rounded-lg px-4 py-2.5 focus:outline-none focus:border-[#B02E0C] focus:ring-2 focus:ring-[#B02E0C]/20 transition-all ${isViewMode ? "bg-gray-100 cursor-not-allowed" : ""}`}
                   required
                 />
               </div>
@@ -272,7 +399,8 @@ const CreatePrompt = () => {
                   name="type"
                   value={formData.type}
                   onChange={handleInputChange}
-                  className="w-full border-2 border-gray-200 rounded-lg px-4 py-2.5 focus:outline-none focus:border-[#B02E0C] focus:ring-2 focus:ring-[#B02E0C]/20 transition-all"
+                  disabled={isViewMode}
+                  className={`w-full border-2 border-gray-200 rounded-lg px-4 py-2.5 focus:outline-none focus:border-[#B02E0C] focus:ring-2 focus:ring-[#B02E0C]/20 transition-all ${isViewMode ? "bg-gray-100 cursor-not-allowed" : ""}`}
                   required
                 >
                   <option value="documnets">documnets</option>
@@ -301,7 +429,9 @@ const CreatePrompt = () => {
                 onChange={handleInputChange}
                 placeholder="You are an expert construction contract writer in India. Using the provided project data, create a professional JSON document as per the required structure.&#10;&#10;Project Data:&#10;site_name: {{site_name}}, builder_name: {{builder_name}}..."
                 rows="12"
-                className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:outline-none focus:border-[#B02E0C] focus:ring-2 focus:ring-[#B02E0C]/20 transition-all font-mono text-sm bg-gray-50/50"
+                disabled={isViewMode}
+                readOnly={isViewMode}
+                className={`w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:outline-none focus:border-[#B02E0C] focus:ring-2 focus:ring-[#B02E0C]/20 transition-all font-mono text-sm bg-gray-50/50 ${isViewMode ? "bg-gray-100 cursor-not-allowed" : ""}`}
                 required
               />
               <div className="absolute bottom-3 right-3 text-xs text-gray-400">
@@ -327,13 +457,15 @@ const CreatePrompt = () => {
                 Variables Configuration
                 <span className="text-red-500">*</span>
               </h2>
-              <button
-                type="button"
-                onClick={handleAddVariable}
-                className="px-4 py-2 bg-gradient-to-r from-[#B02E0C] to-[#8d270b] text-white rounded-lg hover:from-[#8d270b] hover:to-[#B02E0C] flex items-center gap-2 text-sm font-medium shadow-sm transition-all"
-              >
-                <Plus size={18} /> Add Variable
-              </button>
+              {!isViewMode && (
+                <button
+                  type="button"
+                  onClick={handleAddVariable}
+                  className="px-4 py-2 bg-gradient-to-r from-[#B02E0C] to-[#8d270b] text-white rounded-lg hover:from-[#8d270b] hover:to-[#B02E0C] flex items-center gap-2 text-sm font-medium shadow-sm transition-all"
+                >
+                  <Plus size={18} /> Add Variable
+                </button>
+              )}
             </div>
 
             <div className="space-y-3">
@@ -354,7 +486,9 @@ const CreatePrompt = () => {
                           handleVariableChange(index, "name", e.target.value)
                         }
                         placeholder="e.g., site_name"
-                        className="w-full border-2 border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#B02E0C] focus:ring-2 focus:ring-[#B02E0C]/20 transition-all font-mono"
+                        disabled={isViewMode}
+                        readOnly={isViewMode}
+                        className={`w-full border-2 border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#B02E0C] focus:ring-2 focus:ring-[#B02E0C]/20 transition-all font-mono ${isViewMode ? "bg-gray-100 cursor-not-allowed" : ""}`}
                       />
                     </div>
                     <div>
@@ -372,7 +506,8 @@ const CreatePrompt = () => {
                                 e.target.value
                               )
                             }
-                            className="w-full border-2 border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#B02E0C] focus:ring-2 focus:ring-[#B02E0C]/20 transition-all"
+                            disabled={isViewMode}
+                            className={`w-full border-2 border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#B02E0C] focus:ring-2 focus:ring-[#B02E0C]/20 transition-all ${isViewMode ? "bg-gray-100 cursor-not-allowed" : ""}`}
                           >
                             <option value="">Select Reference</option>
                             {referenceLoading ? (
@@ -386,18 +521,20 @@ const CreatePrompt = () => {
                             )}
                           </select>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => setShowNewReferenceModal(true)}
-                          className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-xs mt-7 border border-gray-200 transition-all"
-                          title="Create New Reference"
-                        >
-                          <Plus size={16} />
-                        </button>
+                        {!isViewMode && (
+                          <button
+                            type="button"
+                            onClick={() => setShowNewReferenceModal(true)}
+                            className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-xs mt-7 border border-gray-200 transition-all"
+                            title="Create New Reference"
+                          >
+                            <Plus size={16} />
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
-                  {variables.length > 1 && (
+                  {!isViewMode && variables.length > 1 && (
                     <button
                       type="button"
                       onClick={() => handleRemoveVariable(index)}
@@ -474,31 +611,39 @@ const CreatePrompt = () => {
         </div>
         
         {/* Submit Button */}
-        <div className="flex justify-end gap-3 pt-6 mt-6 border-t border-gray-200">
-          <button
-            type="button"
-            onClick={() => {
-              setFormData({
-                title: "",
-                prompt: "",
-                type: "documnets",
-                feature_id: "",
-              });
-              setVariables([{ name: "", promptReferenceId: "" }]);
-            }}
-            className="px-6 py-3 border-2 border-gray-300 rounded-lg hover:bg-gray-50 font-medium transition-all"
-          >
-            Reset
-          </button>
-          <button
-            type="submit"
-            disabled={promptLoading}
-            className="px-8 py-3 bg-gradient-to-r from-[#B02E0C] to-[#8d270b] text-white rounded-lg hover:from-[#8d270b] hover:to-[#B02E0C] disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-medium shadow-lg transition-all"
-          >
-            {promptLoading && <Loader2 className="animate-spin" size={18} />}
-            Create Prompt
-          </button>
-        </div>
+        {!isViewMode && (
+          <div className="flex justify-end gap-3 pt-6 mt-6 border-t border-gray-200">
+            <button
+              type="button"
+              onClick={() => {
+                setFormData({
+                  title: "",
+                  prompt: "",
+                  type: "documnets",
+                  feature_id: "",
+                });
+                setVariables([{ name: "", promptReferenceId: "" }]);
+              }}
+              className="px-6 py-3 border-2 border-gray-300 rounded-lg hover:bg-gray-50 font-medium transition-all"
+            >
+              Reset
+            </button>
+            <button
+              type="submit"
+              disabled={promptLoading}
+              className="px-8 py-3 bg-gradient-to-r from-[#B02E0C] to-[#8d270b] text-white rounded-lg hover:from-[#8d270b] hover:to-[#B02E0C] disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-medium shadow-lg transition-all"
+            >
+              {promptLoading ? (
+                <>
+                  <Loader2 className="animate-spin" size={20} />
+                  {isEditMode ? "Updating..." : "Creating..."}
+                </>
+              ) : (
+                isEditMode ? "Update Prompt" : "Create Prompt"
+              )}
+            </button>
+          </div>
+        )}
       </form>
 
       {/* New Reference Modal */}

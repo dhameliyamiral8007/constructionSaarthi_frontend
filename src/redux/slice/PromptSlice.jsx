@@ -42,6 +42,21 @@ export const fetchAllPrompts = createAsyncThunk(
   }
 );
 
+// Fetch single prompt by ID
+export const fetchPromptById = createAsyncThunk(
+  "prompt/fetchPromptById",
+  async (id, thunkAPI) => {
+    try {
+      const response = await apiInstance.get(`${baseUrl}/api/prompt/${id}`);
+      return response.data;
+    } catch (error) {
+      return thunkAPI.rejectWithValue(
+        error.response?.data?.message || error.message
+      );
+    }
+  }
+);
+
 // Create prompt
 export const createPrompt = createAsyncThunk(
   "prompt/createPrompt",
@@ -105,6 +120,7 @@ const promptSlice = createSlice({
   name: "prompt",
   initialState: {
     prompts: [],
+    currentPrompt: null,
     loading: false,
     error: null,
   },
@@ -125,6 +141,19 @@ const promptSlice = createSlice({
         state.prompts = action.payload.data || action.payload.prompts || [];
       })
       .addCase(fetchAllPrompts.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload || action.error.message;
+      })
+      // Fetch prompt by ID
+      .addCase(fetchPromptById.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchPromptById.fulfilled, (state, action) => {
+        state.loading = false;
+        state.currentPrompt = action.payload.data || action.payload.prompt || action.payload;
+      })
+      .addCase(fetchPromptById.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload || action.error.message;
       })
